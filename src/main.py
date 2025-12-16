@@ -12,6 +12,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.health import router as health_router
+from src.api.routes.upload import router as upload_router
+from src.api.routes.documents import router as documents_router
+from src.api.routes.search import router as search_router
+from src.api.routes.costs import router as costs_router
 from src.config.logging import setup_logging, get_logger
 from src.config.settings import get_settings
 
@@ -70,9 +74,15 @@ def create_app() -> FastAPI:
     # Registrar routers
     app.include_router(health_router)
 
-    # Router para API v1 (futuro)
+    # Router para API v1
+    # O prefixo /api/v1 é adicionado aqui
+    app.include_router(upload_router, prefix="/api/v1")      # /api/v1/upload/*
+    app.include_router(documents_router, prefix="/api/v1")   # /api/v1/documents/*
+    app.include_router(search_router, prefix="/api/v1")      # /api/v1/search/*
+    app.include_router(costs_router, prefix="/api/v1")       # /api/v1/costs/*
+
+    # Routers futuros (serão ativados nas próximas fases)
     # app.include_router(chat_router, prefix="/api/v1")
-    # app.include_router(upload_router, prefix="/api/v1")
     # app.include_router(clients_router, prefix="/api/v1")
 
     return app

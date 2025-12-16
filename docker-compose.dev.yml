@@ -9,6 +9,7 @@ services:
     volumes:
       # Hot reload: monta código local no container
       - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
     environment:
       - APP_ENV=development
       - APP_DEBUG=true

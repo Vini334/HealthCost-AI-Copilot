@@ -61,36 +61,36 @@ Este documento detalha as fases de desenvolvimento do HealthCost AI Copilot, com
 ### Entregas
 
 #### 2.1 Upload e Armazenamento
-- [ ] Endpoint POST `/api/v1/upload/contract` (PDF)
-- [ ] Endpoint POST `/api/v1/upload/costs` (CSV/Excel)
-- [ ] Validação de formatos e tamanhos
-- [ ] Upload para Azure Blob Storage
-- [ ] Registro de metadados no Cosmos DB
+- [x] Endpoint POST `/api/v1/upload/contract` (PDF)
+- [x] Endpoint POST `/api/v1/upload/costs` (CSV/Excel)
+- [x] Validação de formatos e tamanhos
+- [x] Upload para Azure Blob Storage
+- [x] Registro de metadados no Cosmos DB
 
 #### 2.2 Processamento de Contratos
-- [ ] Extração de texto de PDFs (PyPDF2/pdfplumber)
-- [ ] Chunking inteligente
-  - [ ] Por páginas
-  - [ ] Por seções/cláusulas (regex patterns)
-  - [ ] Overlap entre chunks
-- [ ] Extração de metadados (número de página, seção detectada)
+- [x] Extração de texto de PDFs (PyPDF2/pdfplumber)
+- [x] Chunking inteligente
+  - [x] Por páginas
+  - [x] Por seções/cláusulas (regex patterns)
+  - [x] Overlap entre chunks
+- [x] Extração de metadados (número de página, seção detectada)
 
 #### 2.3 Indexação Vetorial
-- [ ] Geração de embeddings via Azure OpenAI
-- [ ] Indexação no Azure AI Search
-- [ ] Metadados incluídos (client_id, contract_id, page, section)
+- [x] Geração de embeddings via Azure OpenAI
+- [x] Indexação no Azure AI Search
+- [x] Metadados incluídos (client_id, contract_id, page, section)
 
 #### 2.4 Busca Semântica
-- [ ] Função de busca vetorial
-- [ ] Função de busca híbrida (vetorial + keyword)
-- [ ] Filtros por client_id e contract_id
-- [ ] Re-ranking de resultados
+- [x] Função de busca vetorial
+- [x] Função de busca híbrida (vetorial + keyword)
+- [x] Filtros por client_id e contract_id
+- [x] Re-ranking de resultados
 
 #### 2.5 Processamento de Dados de Custos
-- [ ] Parser de CSV/Excel
-- [ ] Validação de colunas esperadas
-- [ ] Normalização de dados
-- [ ] Armazenamento estruturado
+- [x] Parser de CSV/Excel
+- [x] Validação de colunas esperadas
+- [x] Normalização de dados
+- [x] Armazenamento estruturado
 
 ### Critérios de Conclusão
 - Upload de PDF funciona e indexa no AI Search
@@ -106,16 +106,16 @@ Este documento detalha as fases de desenvolvimento do HealthCost AI Copilot, com
 ### Entregas
 
 #### 3.1 Framework de Agentes
-- [ ] Classe base para agentes
-- [ ] Sistema de tools/functions
-- [ ] Gerenciamento de contexto
-- [ ] Logging de execução por agente
+- [x] Classe base para agentes
+- [x] Sistema de tools/functions
+- [x] Gerenciamento de contexto
+- [x] Logging de execução por agente
 
 #### 3.2 Retrieval Agent
-- [ ] Recebe query e contexto (client_id, contract_id)
-- [ ] Executa busca híbrida
-- [ ] Filtra e rankeia resultados
-- [ ] Retorna chunks relevantes com metadados
+- [x] Recebe query e contexto (client_id, contract_id)
+- [x] Executa busca híbrida
+- [x] Filtra e rankeia resultados
+- [x] Retorna chunks relevantes com metadados
 
 #### 3.3 Contract Analyst Agent
 - [ ] Recebe chunks e pergunta
@@ -281,8 +281,8 @@ Este documento detalha as fases de desenvolvimento do HealthCost AI Copilot, com
 | Fase | Status | Início | Conclusão |
 |------|--------|--------|-----------|
 | Fase 1 - Setup | Concluída | 15/12/2025 | 15/12/2025 |
-| Fase 2 - Ingestão | Não iniciada | - | - |
-| Fase 3 - Agentes | Não iniciada | - | - |
+| Fase 2 - Ingestão | Concluída | 16/12/2025 | 16/12/2025 |
+| Fase 3 - Agentes | Em andamento | 16/12/2025 | - |
 | Fase 4 - Interface | Não iniciada | - | - |
 | Fase 5 - Deploy | Não iniciada | - | - |
 | Fase 6 - Evolução | Não iniciada | - | - |
