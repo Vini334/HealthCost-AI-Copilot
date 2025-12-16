@@ -1,0 +1,16 @@
+# Docker Compose override para desenvolvimento
+# Uso: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      # Hot reload: monta código local no container
+      - ./src:/app/src:ro
+    environment:
+      - APP_ENV=development
+      - APP_DEBUG=true
+      - APP_LOG_LEVEL=DEBUG
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

@@ -1,0 +1,313 @@
+# Roadmap de Desenvolvimento
+
+Este documento detalha as fases de desenvolvimento do HealthCost AI Copilot, com entregas específicas e critérios de conclusão.
+
+## Visão Geral das Fases
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  FASE 1        FASE 2        FASE 3        FASE 4        FASE 5        FASE 6│
+│  Setup         Ingestão      Agentes       Interface     Deploy        Evolução│
+│  ━━━━━━        ━━━━━━━━      ━━━━━━━       ━━━━━━━━━     ━━━━━━        ━━━━━━━│
+│  Infra         MVP           Multi-        Chat          Container     Métricas│
+│  Azure         Search        Agent         API           Apps          Refine│
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Fase 1: Configuração de Infraestrutura
+
+**Objetivo:** Preparar ambiente de desenvolvimento e provisionar recursos Azure.
+
+### Entregas
+
+#### 1.1 Ambiente de Desenvolvimento Local
+- [x] Estrutura de diretórios do projeto
+- [x] Configuração do ambiente Python (pyproject.toml ou requirements.txt)
+- [x] Configuração do Docker e docker-compose
+- [x] Arquivo .env.example com variáveis necessárias
+- [x] Pre-commit hooks (linting, formatting)
+
+#### 1.2 Recursos Azure
+- [x] Resource Group criado
+- [x] Azure OpenAI provisionado
+  - [x] Deployment de modelo GPT-4 ou GPT-4o
+  - [x] Deployment de modelo de embeddings (text-embedding-ada-002 ou text-embedding-3-small)
+- [x] Azure AI Search provisionado
+  - [ ] Índice de contratos criado (será criado na Fase 2)
+- [x] Azure Blob Storage provisionado
+  - [x] Containers criados (contracts, costs, processed)
+- [x] Azure Cosmos DB provisionado
+  - [x] Database e collections criadas
+
+#### 1.3 Projeto Base
+- [x] FastAPI app inicial (health check funcionando)
+- [x] Configuração de settings com Pydantic
+- [x] Logging estruturado configurado
+- [x] Testes básicos rodando
+
+### Critérios de Conclusão
+- `docker-compose up` sobe a aplicação
+- `/health` retorna 200
+- Conexões com Azure validadas
+
+---
+
+## Fase 2: Sistema de Ingestão e Busca
+
+**Objetivo:** Implementar pipeline de ingestão de documentos e busca vetorial.
+
+### Entregas
+
+#### 2.1 Upload e Armazenamento
+- [ ] Endpoint POST `/api/v1/upload/contract` (PDF)
+- [ ] Endpoint POST `/api/v1/upload/costs` (CSV/Excel)
+- [ ] Validação de formatos e tamanhos
+- [ ] Upload para Azure Blob Storage
+- [ ] Registro de metadados no Cosmos DB
+
+#### 2.2 Processamento de Contratos
+- [ ] Extração de texto de PDFs (PyPDF2/pdfplumber)
+- [ ] Chunking inteligente
+  - [ ] Por páginas
+  - [ ] Por seções/cláusulas (regex patterns)
+  - [ ] Overlap entre chunks
+- [ ] Extração de metadados (número de página, seção detectada)
+
+#### 2.3 Indexação Vetorial
+- [ ] Geração de embeddings via Azure OpenAI
+- [ ] Indexação no Azure AI Search
+- [ ] Metadados incluídos (client_id, contract_id, page, section)
+
+#### 2.4 Busca Semântica
+- [ ] Função de busca vetorial
+- [ ] Função de busca híbrida (vetorial + keyword)
+- [ ] Filtros por client_id e contract_id
+- [ ] Re-ranking de resultados
+
+#### 2.5 Processamento de Dados de Custos
+- [ ] Parser de CSV/Excel
+- [ ] Validação de colunas esperadas
+- [ ] Normalização de dados
+- [ ] Armazenamento estruturado
+
+### Critérios de Conclusão
+- Upload de PDF funciona e indexa no AI Search
+- Busca retorna chunks relevantes
+- Dados de custos são parseados corretamente
+
+---
+
+## Fase 3: Sistema Multi-Agentes
+
+**Objetivo:** Implementar agentes especializados e orquestração.
+
+### Entregas
+
+#### 3.1 Framework de Agentes
+- [ ] Classe base para agentes
+- [ ] Sistema de tools/functions
+- [ ] Gerenciamento de contexto
+- [ ] Logging de execução por agente
+
+#### 3.2 Retrieval Agent
+- [ ] Recebe query e contexto (client_id, contract_id)
+- [ ] Executa busca híbrida
+- [ ] Filtra e rankeia resultados
+- [ ] Retorna chunks relevantes com metadados
+
+#### 3.3 Contract Analyst Agent
+- [ ] Recebe chunks e pergunta
+- [ ] Interpreta cláusulas contratuais
+- [ ] Explica em linguagem de negócios
+- [ ] Cita seções e páginas
+
+#### 3.4 Cost Insights Agent
+- [ ] Acessa dados de custos do cliente
+- [ ] Tools para análises:
+  - [ ] Agregação por categoria
+  - [ ] Evolução temporal
+  - [ ] Top procedimentos
+  - [ ] Comparação de períodos
+- [ ] Gera insights sobre tendências
+
+#### 3.5 Negotiation Advisor Agent
+- [ ] Recebe contexto de contrato + custos
+- [ ] Identifica oportunidades de renegociação
+- [ ] Prioriza pontos por impacto
+- [ ] Estima economia potencial
+
+#### 3.6 Orchestrator Agent
+- [ ] Análise de intent da pergunta
+- [ ] Decisão de quais agentes acionar
+- [ ] Coordenação de execução (paralela/sequencial)
+- [ ] Consolidação de respostas
+- [ ] Geração de resposta final
+
+### Critérios de Conclusão
+- Pergunta sobre contrato aciona Retrieval + Contract Analyst
+- Pergunta sobre custos aciona Cost Insights
+- Pergunta sobre renegociação coordena múltiplos agentes
+- Respostas incluem evidências e referências
+
+---
+
+## Fase 4: Interface Conversacional
+
+**Objetivo:** Implementar API de chat completa com histórico.
+
+### Entregas
+
+#### 4.1 Endpoint de Chat
+- [ ] POST `/api/v1/chat`
+- [ ] Request: message, client_id, contract_id, conversation_id (opcional)
+- [ ] Response: answer, sources, agent_trace (debug)
+
+#### 4.2 Gerenciamento de Conversas
+- [ ] Criar nova conversa
+- [ ] Continuar conversa existente
+- [ ] Listar conversas por cliente
+- [ ] Histórico de mensagens
+
+#### 4.3 Contexto de Conversa
+- [ ] Memória de curto prazo (últimas N mensagens)
+- [ ] Resumo de conversa longa
+- [ ] Referência a mensagens anteriores
+
+#### 4.4 Formatação de Respostas
+- [ ] Markdown para formatação rica
+- [ ] Citações de fontes (página, seção)
+- [ ] Tabelas para dados numéricos
+- [ ] Destaque de recomendações
+
+#### 4.5 API de Clientes e Contratos
+- [ ] CRUD de clientes
+- [ ] Listagem de contratos por cliente
+- [ ] Status de processamento de documentos
+
+### Critérios de Conclusão
+- Chat funciona end-to-end
+- Histórico persiste entre sessões
+- Respostas são bem formatadas com fontes
+
+---
+
+## Fase 5: Deploy e Observabilidade
+
+**Objetivo:** Containerizar e fazer deploy no Azure Container Apps.
+
+### Entregas
+
+#### 5.1 Containerização
+- [ ] Dockerfile otimizado (multi-stage)
+- [ ] docker-compose para desenvolvimento
+- [ ] Imagem publicada no Azure Container Registry
+
+#### 5.2 CI/CD
+- [ ] GitHub Actions workflow
+  - [ ] Lint e testes
+  - [ ] Build da imagem
+  - [ ] Push para ACR
+  - [ ] Deploy para Container Apps
+
+#### 5.3 Azure Container Apps
+- [ ] Ambiente criado
+- [ ] App configurada
+- [ ] Variáveis de ambiente (secrets)
+- [ ] Scaling configurado
+- [ ] Health checks
+
+#### 5.4 Observabilidade
+- [ ] Logging estruturado (JSON)
+- [ ] Application Insights integrado
+- [ ] Métricas customizadas:
+  - [ ] Tempo de resposta por agente
+  - [ ] Tokens utilizados
+  - [ ] Taxa de sucesso
+- [ ] Alertas básicos
+
+#### 5.5 Documentação de Deploy
+- [ ] Guia de deploy manual
+- [ ] Troubleshooting comum
+- [ ] Runbook de operações
+
+### Critérios de Conclusão
+- Aplicação rodando no Container Apps
+- CI/CD funcionando
+- Logs e métricas visíveis no Azure
+
+---
+
+## Fase 6: Evolução e Refinamentos
+
+**Objetivo:** Melhorar qualidade, performance e experiência.
+
+### Entregas
+
+#### 6.1 Qualidade de Respostas
+- [ ] Avaliação de respostas (manual inicialmente)
+- [ ] Ajuste de prompts dos agentes
+- [ ] Few-shot examples para casos comuns
+- [ ] Tratamento de edge cases
+
+#### 6.2 Performance
+- [ ] Profiling de latência
+- [ ] Otimização de chunking
+- [ ] Cache de embeddings frequentes
+- [ ] Paralelização de agentes
+
+#### 6.3 UX/Features Adicionais
+- [ ] Sugestões de perguntas
+- [ ] Feedback do usuário (thumbs up/down)
+- [ ] Export de relatórios
+- [ ] Comparação entre contratos
+
+#### 6.4 Testes e Cobertura
+- [ ] Testes unitários (>70% cobertura)
+- [ ] Testes de integração
+- [ ] Testes end-to-end
+- [ ] Dataset de avaliação
+
+### Critérios de Conclusão
+- Respostas consistentes e precisas
+- Latência < 10s para perguntas comuns
+- Usuário consegue realizar os 4 casos de uso principais
+
+---
+
+## Tracking de Progresso
+
+| Fase | Status | Início | Conclusão |
+|------|--------|--------|-----------|
+| Fase 1 - Setup | Concluída | 15/12/2025 | 15/12/2025 |
+| Fase 2 - Ingestão | Não iniciada | - | - |
+| Fase 3 - Agentes | Não iniciada | - | - |
+| Fase 4 - Interface | Não iniciada | - | - |
+| Fase 5 - Deploy | Não iniciada | - | - |
+| Fase 6 - Evolução | Não iniciada | - | - |
+
+---
+
+## Dependências entre Fases
+
+```
+Fase 1 ──────┬──────▶ Fase 2 ──────▶ Fase 3 ──────▶ Fase 4
+             │                                        │
+             └────────────────────────────────────────┴──────▶ Fase 5 ──────▶ Fase 6
+```
+
+- **Fase 2** depende de **Fase 1** (infraestrutura Azure)
+- **Fase 3** depende de **Fase 2** (precisa de busca funcionando)
+- **Fase 4** depende de **Fase 3** (precisa de agentes)
+- **Fase 5** pode iniciar parcialmente junto com **Fase 4**
+- **Fase 6** é contínua após MVP funcional
+
+---
+
+## Notas
+
+- Este roadmap é um guia, não um cronograma rígido
+- Priorize funcionalidade sobre perfeição no MVP
+- Documente aprendizados durante o desenvolvimento
+- Atualize este documento conforme o projeto evolui
