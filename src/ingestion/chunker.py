@@ -247,6 +247,7 @@ class TextChunker:
         pages: list[PageContent],
         document_id: UUID,
         client_id: str,
+        document_name: Optional[str] = None,
     ) -> list[DocumentChunk]:
         """
         Cria um chunk por página.
@@ -270,6 +271,7 @@ class TextChunker:
                 for j, sub_text in enumerate(sub_chunks):
                     chunk = DocumentChunk(
                         document_id=document_id,
+                        document_name=document_name,
                         client_id=client_id,
                         content=sub_text,
                         page_number=page.page_number,
@@ -280,6 +282,7 @@ class TextChunker:
             else:
                 chunk = DocumentChunk(
                     document_id=document_id,
+                    document_name=document_name,
                     client_id=client_id,
                     content=page.text,
                     page_number=page.page_number,
@@ -295,6 +298,7 @@ class TextChunker:
         pages: list[PageContent],
         document_id: UUID,
         client_id: str,
+        document_name: Optional[str] = None,
     ) -> list[DocumentChunk]:
         """
         Cria chunks baseados em seções detectadas.
@@ -319,6 +323,7 @@ class TextChunker:
                 for sub_text in sub_chunks:
                     chunk = DocumentChunk(
                         document_id=document_id,
+                        document_name=document_name,
                         client_id=client_id,
                         content=sub_text,
                         page_start=section["page_start"],
@@ -335,6 +340,7 @@ class TextChunker:
                 # Por ora, mantém como chunk separado
                 chunk = DocumentChunk(
                     document_id=document_id,
+                    document_name=document_name,
                     client_id=client_id,
                     content=text,
                     page_start=section["page_start"],
@@ -349,6 +355,7 @@ class TextChunker:
             else:
                 chunk = DocumentChunk(
                     document_id=document_id,
+                    document_name=document_name,
                     client_id=client_id,
                     content=text,
                     page_start=section["page_start"],
@@ -368,6 +375,7 @@ class TextChunker:
         pages: list[PageContent],
         document_id: UUID,
         client_id: str,
+        document_name: Optional[str] = None,
     ) -> list[DocumentChunk]:
         """
         Cria chunks de tamanho fixo com overlap.
@@ -403,6 +411,7 @@ class TextChunker:
 
             chunk = DocumentChunk(
                 document_id=document_id,
+                document_name=document_name,
                 client_id=client_id,
                 content=text,
                 page_number=page_number,
@@ -433,6 +442,7 @@ class TextChunker:
         pages: list[PageContent],
         document_id: UUID,
         client_id: str,
+        document_name: Optional[str] = None,
     ) -> list[DocumentChunk]:
         """
         Divide páginas de um documento em chunks.
@@ -443,6 +453,7 @@ class TextChunker:
             pages: Lista de PageContent do PDF extrator
             document_id: ID do documento
             client_id: ID do cliente
+            document_name: Nome original do documento (ex: 'Contrato_2024.pdf')
 
         Returns:
             Lista de DocumentChunk prontos para indexação
@@ -461,17 +472,17 @@ class TextChunker:
 
         # Seleciona estratégia
         if self.config.strategy == ChunkingStrategy.PAGE:
-            chunks = self._chunk_by_page(pages, document_id, client_id)
+            chunks = self._chunk_by_page(pages, document_id, client_id, document_name)
 
         elif self.config.strategy == ChunkingStrategy.SECTION:
-            chunks = self._chunk_by_section(pages, document_id, client_id)
+            chunks = self._chunk_by_section(pages, document_id, client_id, document_name)
 
         elif self.config.strategy == ChunkingStrategy.FIXED_SIZE:
-            chunks = self._chunk_by_fixed_size(pages, document_id, client_id)
+            chunks = self._chunk_by_fixed_size(pages, document_id, client_id, document_name)
 
         elif self.config.strategy == ChunkingStrategy.HYBRID:
             # Tenta seção primeiro
-            chunks = self._chunk_by_section(pages, document_id, client_id)
+            chunks = self._chunk_by_section(pages, document_id, client_id, document_name)
 
             # Se não encontrou seções úteis, fallback para página
             sections_found = sum(1 for c in chunks if c.section_title)
@@ -481,11 +492,11 @@ class TextChunker:
                     sections_found=sections_found,
                     total_chunks=len(chunks),
                 )
-                chunks = self._chunk_by_page(pages, document_id, client_id)
+                chunks = self._chunk_by_page(pages, document_id, client_id, document_name)
 
         else:
             # Fallback
-            chunks = self._chunk_by_page(pages, document_id, client_id)
+            chunks = self._chunk_by_page(pages, document_id, client_id, document_name)
 
         # Link chunks adjacentes
         chunks = self._link_chunks(chunks)

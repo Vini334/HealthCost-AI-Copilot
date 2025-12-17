@@ -382,6 +382,59 @@ class ConversationService:
         """
         return await self._cosmos.delete_conversation(conversation_id, client_id)
 
+    async def delete_message(
+        self,
+        conversation_id: str,
+        client_id: str,
+        message_id: str,
+    ) -> bool:
+        """
+        Remove uma mensagem específica de uma conversa.
+
+        Args:
+            conversation_id: ID da conversa
+            client_id: ID do cliente
+            message_id: ID da mensagem a remover
+
+        Returns:
+            True se removida, False se não encontrada
+        """
+        # Buscar conversa
+        conversation = await self.get_conversation(conversation_id, client_id)
+        if not conversation:
+            return False
+
+        # Encontrar e remover a mensagem
+        original_count = len(conversation.messages)
+        conversation.messages = [
+            msg for msg in conversation.messages
+            if str(msg.id) != message_id
+        ]
+
+        if len(conversation.messages) == original_count:
+            # Mensagem não encontrada
+            return False
+
+        # Atualizar contagem de mensagens
+        conversation.message_count = len(conversation.messages)
+        conversation.updated_at = datetime.utcnow()
+
+        # Atualizar título se não houver mais mensagens do usuário
+        if conversation.message_count == 0:
+            conversation.title = "Conversa vazia"
+
+        # Persistir alterações
+        await self._cosmos.update_conversation(conversation)
+
+        logger.info(
+            "Mensagem removida",
+            conversation_id=conversation_id,
+            message_id=message_id,
+            remaining_messages=conversation.message_count,
+        )
+
+        return True
+
     def get_messages_for_context(
         self,
         conversation: Conversation,

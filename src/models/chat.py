@@ -217,3 +217,60 @@ class ChatError(BaseModel):
         default=None,
         description="Detalhes adicionais do erro",
     )
+
+
+# =============================================================================
+# Modelos para Streaming (SSE - Server-Sent Events)
+# =============================================================================
+
+
+class StreamEventType(str):
+    """Tipos de eventos de streaming."""
+
+    STATUS = "status"
+    AGENT_START = "agent_start"
+    AGENT_COMPLETE = "agent_complete"
+    RESPONSE = "response"
+    COMPLETE = "complete"
+    ERROR = "error"
+
+
+class StreamStatus(BaseModel):
+    """Evento de status durante processamento."""
+
+    step: str = Field(..., description="Identificador do passo atual")
+    message: str = Field(..., description="Mensagem para exibir ao usuário")
+    agent: Optional[str] = Field(default=None, description="Nome do agente (se aplicável)")
+    progress: Optional[int] = Field(default=None, description="Progresso 0-100 (se aplicável)")
+
+
+class StreamAgentEvent(BaseModel):
+    """Evento de início/fim de agente."""
+
+    agent: str = Field(..., description="Nome do agente")
+    status: str = Field(..., description="started ou completed")
+    message: Optional[str] = Field(default=None, description="Mensagem adicional")
+
+
+class StreamCompleteEvent(BaseModel):
+    """Evento de conclusão com resposta completa."""
+
+    response: str = Field(..., description="Resposta final do assistente")
+    conversation_id: str = Field(..., description="ID da conversa")
+    execution_id: str = Field(..., description="ID da execução")
+    sources: List[SourceReference] = Field(default_factory=list, description="Fontes citadas")
+    execution_time_ms: float = Field(..., description="Tempo total de execução")
+
+
+class StreamErrorEvent(BaseModel):
+    """Evento de erro durante streaming."""
+
+    error: str = Field(..., description="Tipo do erro")
+    message: str = Field(..., description="Mensagem de erro")
+
+
+class StreamEvent(BaseModel):
+    """Envelope para eventos de streaming."""
+
+    event: str = Field(..., description="Tipo do evento")
+    data: Dict[str, Any] = Field(..., description="Dados do evento")

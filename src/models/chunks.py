@@ -56,6 +56,10 @@ class DocumentChunk(BaseModel):
         ...,
         description="ID do documento original (referência ao DocumentMetadata)"
     )
+    document_name: Optional[str] = Field(
+        default=None,
+        description="Nome do documento original (ex: 'Contrato_2024.pdf')"
+    )
     client_id: str = Field(
         ...,
         description="ID do cliente para isolamento multi-tenant"

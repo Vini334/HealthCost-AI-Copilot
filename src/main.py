@@ -5,11 +5,14 @@ HealthCost AI Copilot - Assistente de IA para auditoria de planos de saúde.
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, Response
 
 from src.api.health import router as health_router
 from src.api.routes.upload import router as upload_router
@@ -21,6 +24,9 @@ from src.api.routes.conversations import router as conversations_router
 from src.api.routes.clients import router as clients_router
 from src.config.logging import setup_logging, get_logger
 from src.config.settings import get_settings
+
+# Caminho para os arquivos estáticos do frontend
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
@@ -86,6 +92,58 @@ def create_app() -> FastAPI:
     app.include_router(chat_router, prefix="/api/v1")        # /api/v1/chat/*
     app.include_router(conversations_router, prefix="/api/v1")  # /api/v1/conversations/*
     app.include_router(clients_router, prefix="/api/v1")         # /api/v1/clients/*
+
+    # Rota raiz para servir o frontend
+    @app.get("/")
+    async def serve_frontend():
+        """Serve a página principal do frontend."""
+        return FileResponse(
+            STATIC_DIR / "index.html",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            } if settings.is_development else {}
+        )
+
+    # Em desenvolvimento, servir JS/CSS com no-cache para evitar problemas de cache
+    if settings.is_development:
+        @app.get("/static/js/{filename}")
+        async def serve_js_no_cache(filename: str):
+            """Serve arquivos JS sem cache em desenvolvimento."""
+            file_path = STATIC_DIR / "js" / filename
+            if file_path.exists():
+                return FileResponse(
+                    file_path,
+                    media_type="application/javascript",
+                    headers={
+                        "Cache-Control": "no-cache, no-store, must-revalidate",
+                        "Pragma": "no-cache",
+                        "Expires": "0",
+                    }
+                )
+            return Response(status_code=404)
+
+        @app.get("/static/css/{filename}")
+        async def serve_css_no_cache(filename: str):
+            """Serve arquivos CSS sem cache em desenvolvimento."""
+            file_path = STATIC_DIR / "css" / filename
+            if file_path.exists():
+                return FileResponse(
+                    file_path,
+                    media_type="text/css",
+                    headers={
+                        "Cache-Control": "no-cache, no-store, must-revalidate",
+                        "Pragma": "no-cache",
+                        "Expires": "0",
+                    }
+                )
+            return Response(status_code=404)
+
+    # Montar arquivos estáticos (CSS, JS, imagens)
+    # Deve ser montado depois das rotas da API para não conflitar
+    if STATIC_DIR.exists():
+        app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     return app
 

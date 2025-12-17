@@ -932,11 +932,11 @@ class CosmosDBClient:
         Retorna referência ao container de clientes.
 
         O container é criado automaticamente se não existir.
-        Partition key é o próprio id do cliente (auto-particionamento).
+        Partition key é /client_id (igual ao id do cliente).
         """
         self._database.create_container_if_not_exists(
             id=self.CLIENTS_CONTAINER,
-            partition_key=PartitionKey(path="/id"),
+            partition_key=PartitionKey(path="/client_id"),
         )
         return self._database.get_container_client(self.CLIENTS_CONTAINER)
 
@@ -960,6 +960,10 @@ class CosmosDBClient:
 
         # O campo 'id' é obrigatório no Cosmos DB
         item["id"] = str(client.id)
+
+        # O campo 'client_id' é a partition key do container
+        # Deve ser igual ao id para clientes
+        item["client_id"] = str(client.id)
 
         logger.info(
             "Criando cliente",
@@ -993,17 +997,30 @@ class CosmosDBClient:
         c_id = str(client_id)
 
         try:
-            # Para clientes, o id é também a partition key
-            item = container.read_item(
-                item=c_id,
-                partition_key=c_id,
-            )
+            # Usa query cross-partition para compatibilidade com containers
+            # que podem ter sido criados com partition key diferente
+            query = "SELECT * FROM c WHERE c.id = @client_id"
+            parameters = [{"name": "@client_id", "value": c_id}]
 
-            logger.debug("Cliente encontrado", client_id=c_id)
-            return Client(**item)
+            items = list(container.query_items(
+                query=query,
+                parameters=parameters,
+                enable_cross_partition_query=True,
+            ))
 
-        except CosmosResourceNotFoundError:
+            if items:
+                logger.debug("Cliente encontrado", client_id=c_id)
+                return Client(**items[0])
+
             logger.debug("Cliente não encontrado", client_id=c_id)
+            return None
+
+        except Exception as e:
+            logger.warning(
+                "Erro ao buscar cliente",
+                client_id=c_id,
+                error=str(e),
+            )
             return None
 
     async def update_client(self, client) -> dict:
@@ -1139,7 +1156,7 @@ class CosmosDBClient:
         c_id = str(client_id)
 
         try:
-            # Para clientes, o id é também a partition key
+            # Partition key é /client_id (que tem o mesmo valor do id)
             container.delete_item(item=c_id, partition_key=c_id)
             logger.info("Cliente removido", client_id=c_id)
             return True

@@ -299,7 +299,7 @@ class RetrievalAgent(BaseAgent):
             response = await self._run_agent_loop(
                 context=enhanced_context,
                 exec_logger=exec_logger,
-                max_iterations=5,
+                max_iterations=8,  # Aumentado para buscas mais complexas
             )
 
         # Extrair chunks do contexto (foram armazenados pelas ferramentas)

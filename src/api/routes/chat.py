@@ -9,11 +9,14 @@ As conversas são automaticamente persistidas no Cosmos DB,
 permitindo histórico e continuidade entre sessões.
 """
 
+import asyncio
+import json
 import time
-from typing import Optional
+from typing import AsyncGenerator, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
 
 from src.agents import create_orchestrator_agent, AgentStatus
 from src.config.logging import get_logger
@@ -24,6 +27,7 @@ from src.models.chat import (
     SourceReference,
     AgentTrace,
     AgentTraceStep,
+    StreamEventType,
 )
 from src.services.conversation_service import get_conversation_service
 
@@ -414,3 +418,239 @@ async def chat_simple(
             status_code=500,
             detail=f"Erro interno: {str(e)}",
         )
+
+
+@router.post(
+    "/stream",
+    summary="Chat com streaming de status",
+    description="""
+Envia uma mensagem para o assistente com streaming de status em tempo real.
+
+Retorna eventos Server-Sent Events (SSE) com atualizações de progresso
+enquanto processa a solicitação, seguido da resposta final.
+
+## Tipos de eventos
+
+- **status**: Atualização de status do processamento
+- **complete**: Resposta final com todos os dados
+- **error**: Erro durante processamento
+
+## Exemplo de uso (JavaScript)
+
+```javascript
+const eventSource = new EventSource('/api/v1/chat/stream?...');
+
+eventSource.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.event === 'status') {
+        showStatus(data.data.message);
+    } else if (data.event === 'complete') {
+        showResponse(data.data.response);
+        eventSource.close();
+    }
+};
+```
+    """,
+)
+async def chat_stream(request: ChatRequest) -> StreamingResponse:
+    """
+    Chat com streaming de status em tempo real via SSE.
+
+    Envia eventos de progresso durante o processamento e
+    a resposta final quando concluído.
+    """
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        """Gera eventos SSE durante o processamento."""
+        start_time = time.time()
+        event_queue: asyncio.Queue = asyncio.Queue()
+
+        async def progress_callback(step: str, message: str, agent: Optional[str]) -> None:
+            """Callback que envia eventos de status."""
+            event_data = {
+                "event": StreamEventType.STATUS,
+                "data": {
+                    "step": step,
+                    "message": message,
+                    "agent": agent,
+                }
+            }
+            await event_queue.put(event_data)
+
+        async def process_chat() -> dict:
+            """Processa o chat e retorna o resultado."""
+            try:
+                conversation_service = get_conversation_service()
+
+                # Buscar ou criar conversa
+                conversation = await conversation_service.get_or_create_conversation(
+                    client_id=request.client_id,
+                    conversation_id=request.conversation_id,
+                    contract_id=request.contract_id,
+                )
+
+                # Adicionar mensagem do usuário
+                await conversation_service.add_user_message(
+                    conversation=conversation,
+                    content=request.message,
+                )
+
+                # Preparar contexto
+                conversation_history = None
+                conversation_summary = None
+                key_entities = None
+
+                if conversation.message_count > 1:
+                    conversation_context = await conversation_service.get_conversation_context(
+                        conversation=conversation,
+                        max_tokens=8000,
+                        max_messages=15,
+                        include_summary=True,
+                        auto_summarize=True,
+                    )
+                    conversation_history = conversation_context.get("messages", [])
+                    conversation_summary = conversation_context.get("summary")
+                    key_entities = conversation_context.get("key_entities")
+
+                    if conversation_history and conversation_history[-1]["content"] == request.message:
+                        conversation_history = conversation_history[:-1]
+
+                elif request.conversation_history:
+                    conversation_history = [
+                        {"role": msg.role, "content": msg.content}
+                        for msg in request.conversation_history
+                    ]
+
+                # Criar orquestrador e executar com callback de progresso
+                orchestrator = create_orchestrator_agent()
+
+                if conversation_history or conversation_summary:
+                    result = await orchestrator.process_with_history(
+                        query=request.message,
+                        client_id=request.client_id,
+                        contract_id=request.contract_id,
+                        conversation_history=conversation_history,
+                        conversation_summary=conversation_summary,
+                        key_entities=key_entities,
+                        progress_callback=progress_callback,
+                    )
+                else:
+                    # Para execução sem histórico, configurar callback diretamente
+                    orchestrator._progress_callback = progress_callback
+                    result = await orchestrator.execute(
+                        query=request.message,
+                        client_id=request.client_id,
+                        contract_id=request.contract_id,
+                        conversation_id=str(conversation.id),
+                    )
+
+                execution_time_ms = (time.time() - start_time) * 1000
+
+                # Verificar sucesso
+                if result.status == AgentStatus.FAILED:
+                    return {
+                        "success": False,
+                        "error": result.error or "Erro desconhecido",
+                    }
+
+                # Extrair informações
+                intent = result.structured_output.get("intent") if result.structured_output else None
+                agents_invoked = result.structured_output.get("agents_invoked", []) if result.structured_output else []
+                sources_for_storage = result.sources if result.sources else []
+
+                # Persistir resposta
+                await conversation_service.add_assistant_message(
+                    conversation=conversation,
+                    content=result.response or "Desculpe, não foi possível gerar uma resposta.",
+                    execution_id=result.execution_id,
+                    intent=intent,
+                    agents_invoked=agents_invoked,
+                    sources=sources_for_storage,
+                    tokens_used=result.tokens_used,
+                    execution_time_ms=execution_time_ms,
+                )
+
+                # Converter fontes
+                sources = []
+                if request.include_sources and result.sources:
+                    sources = [s.model_dump() if hasattr(s, 'model_dump') else s for s in _convert_sources(result.sources)]
+
+                return {
+                    "success": True,
+                    "response": result.response or "Desculpe, não foi possível gerar uma resposta.",
+                    "conversation_id": str(conversation.id),
+                    "execution_id": result.execution_id,
+                    "sources": sources,
+                    "execution_time_ms": execution_time_ms,
+                }
+
+            except Exception as e:
+                logger.error("Erro no chat stream", error=str(e), exc_info=True)
+                return {
+                    "success": False,
+                    "error": str(e),
+                }
+
+        # Iniciar processamento em background
+        process_task = asyncio.create_task(process_chat())
+
+        # Enviar eventos de status enquanto processa
+        try:
+            while not process_task.done():
+                try:
+                    # Aguardar evento com timeout
+                    event = await asyncio.wait_for(event_queue.get(), timeout=0.1)
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                except asyncio.TimeoutError:
+                    continue
+
+            # Processar eventos restantes na fila
+            while not event_queue.empty():
+                event = await event_queue.get()
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+            # Obter resultado final
+            result = await process_task
+
+            if result["success"]:
+                complete_event = {
+                    "event": StreamEventType.COMPLETE,
+                    "data": {
+                        "response": result["response"],
+                        "conversation_id": result["conversation_id"],
+                        "execution_id": result["execution_id"],
+                        "sources": result["sources"],
+                        "execution_time_ms": result["execution_time_ms"],
+                    }
+                }
+            else:
+                complete_event = {
+                    "event": StreamEventType.ERROR,
+                    "data": {
+                        "error": "processing_error",
+                        "message": result["error"],
+                    }
+                }
+
+            yield f"data: {json.dumps(complete_event, ensure_ascii=False)}\n\n"
+
+        except Exception as e:
+            logger.error("Erro no stream SSE", error=str(e), exc_info=True)
+            error_event = {
+                "event": StreamEventType.ERROR,
+                "data": {
+                    "error": "stream_error",
+                    "message": str(e),
+                }
+            }
+            yield f"data: {json.dumps(error_event, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Desabilita buffering no nginx
+        },
+    )

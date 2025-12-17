@@ -5,13 +5,13 @@ Este documento detalha as fases de desenvolvimento do HealthCost AI Copilot, com
 ## Visão Geral das Fases
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  FASE 1        FASE 2        FASE 3        FASE 4        FASE 5        FASE 6│
-│  Setup         Ingestão      Agentes       Interface     Deploy        Evolução│
-│  ━━━━━━        ━━━━━━━━      ━━━━━━━       ━━━━━━━━━     ━━━━━━        ━━━━━━━│
-│  Infra         MVP           Multi-        Chat          Container     Métricas│
-│  Azure         Search        Agent         API           Apps          Refine│
-└─────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│  FASE 1     FASE 2     FASE 3     FASE 4     FASE 4.5    FASE 5     FASE 6               │
+│  Setup      Ingestão   Agentes    Interface  Frontend    Deploy     Evolução             │
+│  ━━━━━━     ━━━━━━━━   ━━━━━━━    ━━━━━━━━━  ━━━━━━━━    ━━━━━━     ━━━━━━━              │
+│  Infra      MVP        Multi-     Chat       Web UI      Container  Métricas             │
+│  Azure      Search     Agent      API        SPA         Apps       Refine               │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -193,6 +193,58 @@ Este documento detalha as fases de desenvolvimento do HealthCost AI Copilot, com
 
 ---
 
+## Fase 4.5: Frontend Web
+
+**Objetivo:** Criar interface web para demonstração e uso do sistema.
+
+### Entregas
+
+#### 4.5.1 Estrutura do Frontend
+- [ ] SPA em HTML/CSS/JS vanilla
+- [ ] Integração com FastAPI (arquivos estáticos)
+- [ ] Tema escuro com paleta EY (preto, cinza, amarelo)
+- [ ] Layout responsivo
+
+#### 4.5.2 Sidebar de Navegação
+- [ ] Lista de clientes com seleção
+- [ ] Lista de contratos do cliente (opcional)
+- [ ] Histórico de conversas agrupado por data
+- [ ] Indicador visual de seleção ativa
+
+#### 4.5.3 Área de Chat
+- [ ] Interface estilo ChatGPT
+- [ ] Renderização de Markdown nas respostas
+- [ ] Citações de fontes (página, seção)
+- [ ] Indicador de "digitando..." durante resposta
+- [ ] Auto-scroll para novas mensagens
+
+#### 4.5.4 Modal de Novo Cliente
+- [ ] Formulário simples (nome do cliente)
+- [ ] Validação de campos
+- [ ] Feedback de sucesso/erro
+- [ ] Atualização automática da lista
+
+#### 4.5.5 Modal de Upload de Documentos
+- [ ] Seleção de tipo (Contrato PDF / Planilha de Custos)
+- [ ] Drag & drop ou seleção de arquivo
+- [ ] Vinculação ao cliente selecionado
+- [ ] Barra de progresso do upload
+- [ ] Status de processamento (Enviando → Processando → Indexando → Concluído)
+- [ ] Feedback de sucesso/erro
+
+#### 4.5.6 Integração com API
+- [ ] Consumo dos endpoints existentes
+- [ ] Tratamento de erros da API
+- [ ] Loading states apropriados
+
+### Critérios de Conclusão
+- Interface acessível em http://localhost:8000
+- Criar cliente, fazer upload e conversar funciona end-to-end
+- Visual clean e moderno com tema EY
+- Responsivo em diferentes tamanhos de tela
+
+---
+
 ## Fase 5: Deploy e Observabilidade
 
 **Objetivo:** Containerizar e fazer deploy no Azure Container Apps.
@@ -284,6 +336,7 @@ Este documento detalha as fases de desenvolvimento do HealthCost AI Copilot, com
 | Fase 2 - Ingestão | Concluída | 16/12/2025 | 16/12/2025 |
 | Fase 3 - Agentes | Concluída | 16/12/2025 | 16/12/2025 |
 | Fase 4 - Interface | Concluída | 16/12/2025 | 16/12/2025 |
+| Fase 4.5 - Frontend | Em andamento | 16/12/2025 | - |
 | Fase 5 - Deploy | Não iniciada | - | - |
 | Fase 6 - Evolução | Não iniciada | - | - |
 
@@ -292,15 +345,14 @@ Este documento detalha as fases de desenvolvimento do HealthCost AI Copilot, com
 ## Dependências entre Fases
 
 ```
-Fase 1 ──────┬──────▶ Fase 2 ──────▶ Fase 3 ──────▶ Fase 4
-             │                                        │
-             └────────────────────────────────────────┴──────▶ Fase 5 ──────▶ Fase 6
+Fase 1 ──▶ Fase 2 ──▶ Fase 3 ──▶ Fase 4 ──▶ Fase 4.5 ──▶ Fase 5 ──▶ Fase 6
 ```
 
 - **Fase 2** depende de **Fase 1** (infraestrutura Azure)
 - **Fase 3** depende de **Fase 2** (precisa de busca funcionando)
 - **Fase 4** depende de **Fase 3** (precisa de agentes)
-- **Fase 5** pode iniciar parcialmente junto com **Fase 4**
+- **Fase 4.5** depende de **Fase 4** (precisa da API de chat)
+- **Fase 5** depende de **Fase 4.5** (deploy do frontend + backend)
 - **Fase 6** é contínua após MVP funcional
 
 ---

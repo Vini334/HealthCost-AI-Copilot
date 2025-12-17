@@ -80,10 +80,15 @@ class ToolDefinition(BaseModel):
                 "object": "object",
             }
 
+            json_type = type_mapping.get(param.type.lower(), "string")
             properties[param.name] = {
-                "type": type_mapping.get(param.type.lower(), "string"),
+                "type": json_type,
                 "description": param.description,
             }
+
+            # Arrays precisam de 'items' no schema JSON do OpenAI
+            if json_type == "array":
+                properties[param.name]["items"] = {"type": "string"}
 
             if param.default is not None:
                 properties[param.name]["default"] = param.default

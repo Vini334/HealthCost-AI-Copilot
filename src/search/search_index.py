@@ -83,6 +83,12 @@ def get_index_schema() -> SearchIndex:
             type=SearchFieldDataType.String,
             filterable=True,
         ),
+        # Nome do documento original (para exibição em citações)
+        SearchableField(
+            name="document_name",
+            type=SearchFieldDataType.String,
+            filterable=True,
+        ),
         # Multi-tenancy: filtragem obrigatória por cliente
         SimpleField(
             name="client_id",

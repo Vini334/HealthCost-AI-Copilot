@@ -198,7 +198,13 @@ class IdentifyRenegotiationOpportunitiesTool(AgentTool):
         """Analisa concentração em prestadores."""
         opportunities = []
 
-        top_providers = cost_data.get("top_providers", {}).get("providers", [])
+        # top_providers pode ser uma lista direta ou um dict com chave "providers"
+        top_providers_data = cost_data.get("top_providers", [])
+        if isinstance(top_providers_data, list):
+            top_providers = top_providers_data
+        else:
+            top_providers = top_providers_data.get("providers", [])
+
         if not top_providers:
             return opportunities
 
@@ -242,7 +248,13 @@ class IdentifyRenegotiationOpportunitiesTool(AgentTool):
         """Analisa tendências de custos."""
         opportunities = []
 
-        periods = cost_data.get("by_period", {}).get("periods", [])
+        # by_period pode ser uma lista direta ou um dict com chave "periods"
+        by_period_data = cost_data.get("by_period", [])
+        if isinstance(by_period_data, list):
+            periods = by_period_data
+        else:
+            periods = by_period_data.get("periods", [])
+
         if len(periods) < 3:
             return opportunities
 
@@ -297,7 +309,13 @@ class IdentifyRenegotiationOpportunitiesTool(AgentTool):
         """Analisa categorias de alto custo."""
         opportunities = []
 
-        categories = cost_data.get("by_category", {}).get("categories", [])
+        # by_category pode ser uma lista direta ou um dict com chave "categories"
+        by_category = cost_data.get("by_category", [])
+        if isinstance(by_category, list):
+            categories = by_category
+        else:
+            categories = by_category.get("categories", [])
+
         if not categories:
             return opportunities
 
@@ -379,7 +397,13 @@ class IdentifyRenegotiationOpportunitiesTool(AgentTool):
         """Analisa procedimentos recorrentes de alto valor."""
         opportunities = []
 
-        procedures = cost_data.get("top_procedures", {}).get("procedures", [])
+        # top_procedures pode ser uma lista direta ou um dict com chave "procedures"
+        top_procedures_data = cost_data.get("top_procedures", [])
+        if isinstance(top_procedures_data, list):
+            procedures = top_procedures_data
+        else:
+            procedures = top_procedures_data.get("procedures", [])
+
         if not procedures:
             return opportunities
 

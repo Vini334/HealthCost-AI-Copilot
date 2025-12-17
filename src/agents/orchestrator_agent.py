@@ -14,7 +14,10 @@ do usuário no sistema de chat.
 
 import asyncio
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
+
+# Tipo para callback de progresso (sync ou async)
+ProgressCallback = Callable[[str, str, Optional[str]], Union[None, Awaitable[None]]]
 
 from src.agents.base import BaseAgent
 from src.agents.context import ContextManager, get_context_manager
@@ -73,6 +76,25 @@ INTENT_KEYWORDS = {
         "oportunidade", "melhorar", "desconto", "negociar",
         "proposta", "alternativa", "benchmark", "mercado",
     ],
+}
+
+# Mensagens amigáveis para status de progresso
+PROGRESS_MESSAGES = {
+    "analyzing": "Analisando sua pergunta...",
+    "retrieval": "Buscando informações nos contratos...",
+    "contract_analyst": "Analisando cláusulas contratuais...",
+    "cost_insights": "Analisando dados de custos...",
+    "negotiation_advisor": "Preparando recomendações de negociação...",
+    "consolidating": "Consolidando informações...",
+    "generating": "Gerando resposta...",
+}
+
+# Mapeamento de AgentType para step de progresso
+AGENT_PROGRESS_STEP = {
+    AgentType.RETRIEVAL: "retrieval",
+    AgentType.CONTRACT_ANALYST: "contract_analyst",
+    AgentType.COST_INSIGHTS: "cost_insights",
+    AgentType.NEGOTIATION_ADVISOR: "negotiation_advisor",
 }
 
 
@@ -253,7 +275,39 @@ class OrchestratorAgent(BaseAgent):
         self._cost_insights = cost_insights
         self._negotiation_advisor = negotiation_advisor
 
+        # Callback de progresso (definido por execução)
+        self._progress_callback: Optional[ProgressCallback] = None
+
         self._logger.info("OrchestratorAgent inicializado")
+
+    async def _notify_progress(
+        self,
+        step: str,
+        message: Optional[str] = None,
+        agent: Optional[str] = None,
+    ) -> None:
+        """
+        Notifica progresso via callback se configurado.
+
+        Args:
+            step: Identificador do passo (ex: "analyzing", "retrieval")
+            message: Mensagem customizada (usa padrão se None)
+            agent: Nome do agente (opcional)
+        """
+        if self._progress_callback is None:
+            return
+
+        # Usar mensagem padrão se não fornecida
+        if message is None:
+            message = PROGRESS_MESSAGES.get(step, f"Processando {step}...")
+
+        try:
+            result = self._progress_callback(step, message, agent)
+            # Suporta callbacks sync e async
+            if asyncio.iscoroutine(result):
+                await result
+        except Exception as e:
+            self._logger.warning(f"Erro ao notificar progresso: {e}")
 
     @property
     def retrieval_agent(self) -> RetrievalAgent:
@@ -308,27 +362,41 @@ class OrchestratorAgent(BaseAgent):
         """
         return []
 
-    async def process(self, context: AgentContext) -> AgentExecutionResult:
+    async def process(
+        self,
+        context: AgentContext,
+        progress_callback: Optional[ProgressCallback] = None,
+    ) -> AgentExecutionResult:
         """
         Processa uma query orquestrando agentes especializados.
 
         Args:
             context: Contexto de execução com query e metadados
+            progress_callback: Callback opcional para notificar progresso.
+                Assinatura: (step: str, message: str, agent: Optional[str]) -> None
 
         Returns:
             AgentExecutionResult com resposta consolidada
         """
+        # Configurar callback para esta execução (usa argumento se fornecido, senão mantém o existente)
+        if progress_callback is not None:
+            self._progress_callback = progress_callback
         exec_logger = self._create_execution_logger(context.execution_id)
 
         try:
-            # 1. Analisar intent da pergunta
+            # 1. Analisar intent da pergunta (considerando histórico de conversa)
+            await self._notify_progress("analyzing")
+
             with exec_logger.step("Analisando intenção da pergunta", action="think"):
-                decision = await self._analyze_intent(context.query)
+                # Extrair histórico recente para análise de intent
+                recent_context = self._extract_recent_context(context)
+                decision = await self._analyze_intent(context.query, recent_context)
                 self._logger.info(
                     "Intent identificado",
                     intent=decision.query_intent,
                     agents=decision.agents_to_invoke,
                     mode=decision.execution_mode,
+                    has_conversation_context=bool(recent_context),
                 )
 
             # 2. Executar agentes conforme decisão
@@ -340,6 +408,8 @@ class OrchestratorAgent(BaseAgent):
                 )
 
             # 3. Consolidar respostas
+            await self._notify_progress("consolidating")
+
             with exec_logger.step("Consolidando respostas", action="think"):
                 final_response = await self._consolidate_responses(
                     query=context.query,
@@ -392,7 +462,38 @@ class OrchestratorAgent(BaseAgent):
                 error=str(e),
             )
 
-    async def _analyze_intent(self, query: str) -> OrchestratorDecision:
+    def _extract_recent_context(self, context: AgentContext) -> Optional[str]:
+        """
+        Extrai contexto recente da conversa para análise de intent.
+
+        Isso permite que o sistema entenda referências como "nesse caso",
+        "esse valor", "o que foi dito", etc.
+
+        Args:
+            context: Contexto de execução
+
+        Returns:
+            Resumo do contexto recente ou None se não houver histórico
+        """
+        if not context.messages:
+            return None
+
+        # Pegar últimas mensagens relevantes (excluindo system prompts)
+        recent_messages = []
+        for msg in context.messages[-6:]:  # Últimas 3 interações (user + assistant)
+            if msg.role in ["user", "assistant"] and msg.content:
+                recent_messages.append(f"{msg.role.upper()}: {msg.content[:500]}")
+
+        if not recent_messages:
+            return None
+
+        return "\n".join(recent_messages)
+
+    async def _analyze_intent(
+        self,
+        query: str,
+        conversation_context: Optional[str] = None,
+    ) -> OrchestratorDecision:
         """
         Analisa a intenção da pergunta do usuário.
 
@@ -401,15 +502,27 @@ class OrchestratorAgent(BaseAgent):
 
         Args:
             query: Pergunta do usuário
+            conversation_context: Contexto recente da conversa (opcional)
 
         Returns:
             OrchestratorDecision com intent e agentes a acionar
         """
         # Primeiro, tentar detecção por keywords (mais rápido)
-        keyword_intent = self._detect_intent_by_keywords(query)
+        # Se há contexto de conversa, inclui na análise
+        full_query = query
+        if conversation_context:
+            full_query = f"{conversation_context}\n\nPergunta atual: {query}"
 
-        # Se a confiança for alta, usar resultado direto
-        if keyword_intent["confidence"] >= 0.6:
+        keyword_intent = self._detect_intent_by_keywords(full_query)
+
+        # Se a confiança for alta E não há contexto ambíguo, usar resultado direto
+        # Perguntas com referências como "nesse caso" precisam de LLM
+        has_contextual_reference = any(
+            ref in query.lower()
+            for ref in ["nesse caso", "esse valor", "isso", "essa", "esse", "disso", "desse", "nessa"]
+        )
+
+        if keyword_intent["confidence"] >= 0.6 and not has_contextual_reference:
             return self._build_decision_from_intent(
                 intent=keyword_intent["intent"],
                 confidence=keyword_intent["confidence"],
@@ -418,7 +531,7 @@ class OrchestratorAgent(BaseAgent):
 
         # Caso contrário, usar LLM para análise mais precisa
         try:
-            llm_intent = await self._analyze_intent_with_llm(query)
+            llm_intent = await self._analyze_intent_with_llm(query, conversation_context)
             return self._build_decision_from_intent(
                 intent=llm_intent.get("intent", "general"),
                 confidence=llm_intent.get("confidence", 0.5),
@@ -491,19 +604,35 @@ class OrchestratorAgent(BaseAgent):
             "keywords_found": keywords_found[best_intent],
         }
 
-    async def _analyze_intent_with_llm(self, query: str) -> Dict[str, Any]:
+    async def _analyze_intent_with_llm(
+        self,
+        query: str,
+        conversation_context: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
         Analisa intent usando LLM para casos ambíguos.
 
         Args:
             query: Pergunta do usuário
+            conversation_context: Contexto recente da conversa (opcional)
 
         Returns:
             Dicionário com análise de intent
         """
+        # Construir prompt com contexto se disponível
+        if conversation_context:
+            user_content = f"""Contexto da conversa anterior:
+{conversation_context}
+
+Pergunta atual do usuário: {query}
+
+IMPORTANTE: Considere o contexto da conversa para entender referências como "nesse caso", "esse valor", etc."""
+        else:
+            user_content = f"Pergunta: {query}"
+
         messages = [
             {"role": "system", "content": INTENT_ANALYSIS_PROMPT},
-            {"role": "user", "content": f"Pergunta: {query}"},
+            {"role": "user", "content": user_content},
         ]
 
         response = await self._call_llm(messages)
@@ -634,6 +763,10 @@ class OrchestratorAgent(BaseAgent):
         context: AgentContext,
     ) -> AgentExecutionResult:
         """Executa um único agente."""
+        # Notificar progresso
+        step = AGENT_PROGRESS_STEP.get(agent_type, agent_type.value)
+        await self._notify_progress(step, agent=agent_type.value)
+
         agent = self._get_agent(agent_type)
         return await agent.execute_with_context(context)
 
@@ -643,6 +776,11 @@ class OrchestratorAgent(BaseAgent):
         context: AgentContext,
     ) -> Dict[AgentType, AgentExecutionResult]:
         """Executa múltiplos agentes em paralelo."""
+        # Notificar progresso para todos os agentes em paralelo
+        agent_names = [a.value for a in agent_types]
+        message = f"Executando {len(agent_types)} agentes em paralelo..."
+        await self._notify_progress("parallel_execution", message, ", ".join(agent_names))
+
         tasks = {}
         for agent_type in agent_types:
             agent = self._get_agent(agent_type)
@@ -679,6 +817,10 @@ class OrchestratorAgent(BaseAgent):
         for agent_type in order:
             if agent_type not in agent_types:
                 continue
+
+            # Notificar progresso para este agente
+            step = AGENT_PROGRESS_STEP.get(agent_type, agent_type.value)
+            await self._notify_progress(step, agent=agent_type.value)
 
             agent = self._get_agent(agent_type)
 
@@ -783,8 +925,13 @@ class OrchestratorAgent(BaseAgent):
         base_context: AgentContext,
         agent_type: AgentType,
     ) -> AgentContext:
-        """Cria contexto específico para um agente."""
-        return AgentContext(
+        """
+        Cria contexto específico para um agente.
+
+        Importante: Copia o histórico de mensagens para que os agentes
+        especializados tenham acesso ao contexto da conversa.
+        """
+        new_context = AgentContext(
             client_id=base_context.client_id,
             contract_id=base_context.contract_id,
             conversation_id=base_context.conversation_id,
@@ -793,6 +940,15 @@ class OrchestratorAgent(BaseAgent):
             cost_data=base_context.cost_data.copy() if base_context.cost_data else None,
             metadata=base_context.metadata.copy(),
         )
+
+        # Copiar histórico de mensagens para manter contexto da conversa
+        # Isso permite que agentes especializados entendam referências
+        # como "nesse caso", "esse valor", etc.
+        if base_context.messages:
+            for msg in base_context.messages:
+                new_context.messages.append(msg)
+
+        return new_context
 
     def _enrich_context(
         self,
@@ -998,6 +1154,7 @@ class OrchestratorAgent(BaseAgent):
         conversation_history: Optional[List[Dict[str, str]]] = None,
         conversation_summary: Optional[str] = None,
         key_entities: Optional[Dict[str, Any]] = None,
+        progress_callback: Optional[ProgressCallback] = None,
     ) -> AgentExecutionResult:
         """
         Processa query considerando histórico de conversa.
@@ -1009,10 +1166,14 @@ class OrchestratorAgent(BaseAgent):
             conversation_history: Histórico de mensagens anteriores
             conversation_summary: Resumo de mensagens antigas (opcional)
             key_entities: Entidades-chave extraídas da conversa (opcional)
+            progress_callback: Callback opcional para notificar progresso.
+                Assinatura: (step: str, message: str, agent: Optional[str]) -> None
 
         Returns:
             AgentExecutionResult com resposta
         """
+        # Configurar callback de progresso
+        self._progress_callback = progress_callback
         # Construir system prompt enriquecido com contexto
         enriched_system_prompt = self.system_prompt
 

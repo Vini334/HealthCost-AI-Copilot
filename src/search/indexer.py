@@ -70,6 +70,7 @@ class DocumentIndexer:
         return {
             "id": str(chunk.id),
             "document_id": str(chunk.document_id),
+            "document_name": chunk.document_name,
             "client_id": chunk.client_id,
             "content": chunk.content,
             "content_vector": embedding,

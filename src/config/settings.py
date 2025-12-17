@@ -14,16 +14,21 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class AzureOpenAISettings(BaseSettings):
     """Configurações do Azure OpenAI."""
 
-    model_config = SettingsConfigDict(env_prefix="AZURE_OPENAI_")
+    model_config = SettingsConfigDict(
+        env_prefix="AZURE_OPENAI_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     endpoint: str = Field(..., description="Endpoint do Azure OpenAI")
     api_key: str = Field(..., description="API Key do Azure OpenAI")
-    api_version: str = Field(default="2024-02-01", description="Versão da API")
+    api_version: str = Field(default="2024-12-01-preview", description="Versão da API")
     deployment_name: str = Field(
         default="gpt-4o", description="Nome do deployment do modelo principal (análises complexas)"
     )
     deployment_name_mini: str = Field(
-        default="o4-mini", description="Nome do deployment do modelo rápido (tarefas simples)"
+        default="gpt-4o", description="Nome do deployment do modelo rápido (tarefas simples)"
     )
     embedding_deployment: str = Field(
         default="text-embedding-3-small", description="Nome do deployment de embeddings"
@@ -33,7 +38,12 @@ class AzureOpenAISettings(BaseSettings):
 class AzureSearchSettings(BaseSettings):
     """Configurações do Azure AI Search."""
 
-    model_config = SettingsConfigDict(env_prefix="AZURE_SEARCH_")
+    model_config = SettingsConfigDict(
+        env_prefix="AZURE_SEARCH_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     endpoint: str = Field(..., description="Endpoint do Azure AI Search")
     api_key: str = Field(..., description="API Key do Azure AI Search")
@@ -45,7 +55,12 @@ class AzureSearchSettings(BaseSettings):
 class AzureStorageSettings(BaseSettings):
     """Configurações do Azure Blob Storage."""
 
-    model_config = SettingsConfigDict(env_prefix="AZURE_STORAGE_")
+    model_config = SettingsConfigDict(
+        env_prefix="AZURE_STORAGE_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     connection_string: str = Field(..., description="Connection string do Storage")
     container_contracts: str = Field(
@@ -60,7 +75,12 @@ class AzureStorageSettings(BaseSettings):
 class CosmosDBSettings(BaseSettings):
     """Configurações do Azure Cosmos DB."""
 
-    model_config = SettingsConfigDict(env_prefix="COSMOS_")
+    model_config = SettingsConfigDict(
+        env_prefix="COSMOS_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     endpoint: str = Field(..., description="Endpoint do Cosmos DB")
     key: str = Field(..., description="Key do Cosmos DB")
@@ -76,7 +96,12 @@ class CosmosDBSettings(BaseSettings):
 class AppSettings(BaseSettings):
     """Configurações gerais da aplicação."""
 
-    model_config = SettingsConfigDict(env_prefix="APP_")
+    model_config = SettingsConfigDict(
+        env_prefix="APP_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     env: Literal["development", "staging", "production"] = Field(
         default="development", description="Ambiente da aplicação"

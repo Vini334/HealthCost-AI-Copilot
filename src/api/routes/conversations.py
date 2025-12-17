@@ -372,6 +372,64 @@ async def delete_conversation(
         )
 
 
+@router.delete(
+    "/{conversation_id}/messages/{message_id}",
+    summary="Remover mensagem",
+    description="""
+Remove uma mensagem específica de uma conversa.
+
+**Atenção:** Esta ação é irreversível. A mensagem e todos os seus
+metadados (fontes, execução, etc.) serão permanentemente removidos.
+
+Se a mensagem removida era uma pergunta do usuário, a resposta
+correspondente permanece (e vice-versa).
+    """,
+)
+async def delete_message(
+    conversation_id: str,
+    message_id: str,
+    client_id: str = Query(..., description="ID do cliente"),
+) -> dict:
+    """Remove uma mensagem de uma conversa."""
+    logger.info(
+        "Removendo mensagem",
+        conversation_id=conversation_id,
+        message_id=message_id,
+        client_id=client_id,
+    )
+
+    try:
+        conversation_service = get_conversation_service()
+
+        deleted = await conversation_service.delete_message(
+            conversation_id=conversation_id,
+            client_id=client_id,
+            message_id=message_id,
+        )
+
+        if not deleted:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Mensagem não encontrada: {message_id}",
+            )
+
+        return {
+            "message": "Mensagem removida com sucesso",
+            "conversation_id": conversation_id,
+            "message_id": message_id,
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error("Erro ao remover mensagem", error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao remover mensagem: {str(e)}",
+        )
+
+
 @router.get(
     "/{conversation_id}/messages",
     summary="Listar mensagens",

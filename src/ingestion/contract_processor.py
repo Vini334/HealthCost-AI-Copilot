@@ -164,6 +164,7 @@ class ContractProcessor:
                 pages=extraction_result.pages,
                 document_id=metadata.id,
                 client_id=client_id,
+                document_name=metadata.filename,
             )
 
             logger.info("Chunks criados", total_chunks=len(chunks))
@@ -252,6 +253,7 @@ class ContractProcessor:
         pdf_bytes: bytes,
         document_id: UUID,
         client_id: str,
+        document_name: Optional[str] = None,
     ) -> ProcessingResult:
         """
         Processa um PDF diretamente de bytes.
@@ -263,6 +265,7 @@ class ContractProcessor:
             pdf_bytes: Conteúdo do PDF
             document_id: ID do documento
             client_id: ID do cliente
+            document_name: Nome do documento (opcional)
 
         Returns:
             ProcessingResult com os chunks
@@ -291,6 +294,7 @@ class ContractProcessor:
                 pages=extraction_result.pages,
                 document_id=document_id,
                 client_id=client_id,
+                document_name=document_name,
             )
 
             processing_time = time.time() - start_time

@@ -42,6 +42,7 @@ class SearchResult:
     # Identificação
     id: str
     document_id: str
+    document_name: Optional[str]
     client_id: str
 
     # Conteúdo
@@ -74,6 +75,7 @@ class SearchResult:
         return {
             "id": self.id,
             "document_id": self.document_id,
+            "document_name": self.document_name,
             "client_id": self.client_id,
             "content": self.content,
             "content_length": self.content_length,
@@ -227,6 +229,7 @@ class SearchService:
         return SearchResult(
             id=result.get("id", ""),
             document_id=result.get("document_id", ""),
+            document_name=result.get("document_name"),
             client_id=result.get("client_id", ""),
             content=result.get("content", ""),
             content_length=result.get("content_length", 0),
@@ -355,7 +358,7 @@ class SearchService:
                 vector_queries=[vector_query],
                 filter=filter_str,
                 select=[
-                    "id", "document_id", "client_id", "content", "content_length",
+                    "id", "document_id", "document_name", "client_id", "content", "content_length",
                     "page_number", "page_start", "page_end",
                     "section_title", "section_number", "section_type",
                     "chunk_index", "total_chunks", "created_at",
@@ -440,7 +443,7 @@ class SearchService:
                 search_text=query,
                 filter=filter_str,
                 select=[
-                    "id", "document_id", "client_id", "content", "content_length",
+                    "id", "document_id", "document_name", "client_id", "content", "content_length",
                     "page_number", "page_start", "page_end",
                     "section_title", "section_number", "section_type",
                     "chunk_index", "total_chunks", "created_at",
@@ -540,7 +543,7 @@ class SearchService:
                 vector_queries=[vector_query],  # Vector search
                 filter=filter_str,
                 select=[
-                    "id", "document_id", "client_id", "content", "content_length",
+                    "id", "document_id", "document_name", "client_id", "content", "content_length",
                     "page_number", "page_start", "page_end",
                     "section_title", "section_number", "section_type",
                     "chunk_index", "total_chunks", "created_at",
@@ -717,7 +720,7 @@ class SearchService:
                 vector_queries=[vector_query],
                 filter=filter_str,
                 select=[
-                    "id", "document_id", "client_id", "content", "content_length",
+                    "id", "document_id", "document_name", "client_id", "content", "content_length",
                     "page_number", "page_start", "page_end",
                     "section_title", "section_number", "section_type",
                     "chunk_index", "total_chunks", "created_at",

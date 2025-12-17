@@ -318,7 +318,7 @@ class CostInsightsAgent(BaseAgent):
             response = await self._run_agent_loop(
                 context=context,
                 exec_logger=exec_logger,
-                max_iterations=5,
+                max_iterations=10,  # Aumentado para permitir análises complexas
             )
 
         # Coletar dados usados na análise

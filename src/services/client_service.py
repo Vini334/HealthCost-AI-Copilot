@@ -335,7 +335,7 @@ class ClientService:
                 status=doc.status.value,
                 created_at=doc.created_at,
                 processed_at=doc.processed_at,
-                page_count=doc.metadata.get("page_count") if doc.metadata else None,
+                page_count=None,  # DocumentMetadata não tem esse campo atualmente
             )
             for doc in documents
         ]
