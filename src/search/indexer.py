@@ -83,7 +83,7 @@ class DocumentIndexer:
             "chunk_index": chunk.chunk_index,
             "total_chunks": chunk.total_chunks,
             "strategy": chunk.strategy.value if chunk.strategy else None,
-            "created_at": chunk.created_at.isoformat() if chunk.created_at else None,
+            "created_at": f"{chunk.created_at.isoformat()}Z" if chunk.created_at else None,
         }
 
     async def index_chunks(

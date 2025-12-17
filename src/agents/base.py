@@ -71,6 +71,7 @@ class BaseAgent(ABC):
 
     # Configurações do LLM
     model_deployment: Optional[str] = None  # None = usa default das settings
+    use_mini_model: bool = False  # True = usa deployment_name_mini para tarefas simples
     temperature: float = 0.7
     max_tokens: int = 2000
 
@@ -101,9 +102,12 @@ class BaseAgent(ABC):
         )
 
         # Deployment do modelo
-        self._deployment = (
-            self.model_deployment or self._settings.azure_openai.deployment_name
-        )
+        if self.model_deployment:
+            self._deployment = self.model_deployment
+        elif self.use_mini_model:
+            self._deployment = self._settings.azure_openai.deployment_name_mini
+        else:
+            self._deployment = self._settings.azure_openai.deployment_name
 
         self._logger = get_logger(
             f"agent.{self.agent_name}",
@@ -468,14 +472,29 @@ class BaseAgent(ABC):
                 continue
             seen.add(source_key)
 
+            # Extrair melhor score disponível
+            score = (
+                chunk.get("reranker_score") or
+                chunk.get("score") or
+                chunk.get("vector_score") or
+                0.0
+            )
+
+            # Extrair snippet do conteúdo
+            content = chunk.get("content", "")
+            content_snippet = content[:200] + "..." if len(content) > 200 else content
+
             sources.append({
                 "document_id": chunk.get("document_id"),
+                "document_name": chunk.get("document_name"),
                 "page_number": chunk.get("page_number"),
                 "page_start": chunk.get("page_start"),
                 "page_end": chunk.get("page_end"),
                 "section_title": chunk.get("section_title"),
+                "section_number": chunk.get("section_number"),
                 "section_type": chunk.get("section_type"),
-                "content_preview": chunk.get("content", "")[:100] + "..." if chunk.get("content") else None,
+                "content_snippet": content_snippet if content else None,
+                "relevance_score": float(score) if score else None,
             })
 
         return sources

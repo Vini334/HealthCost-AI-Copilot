@@ -16,6 +16,9 @@ from src.api.routes.upload import router as upload_router
 from src.api.routes.documents import router as documents_router
 from src.api.routes.search import router as search_router
 from src.api.routes.costs import router as costs_router
+from src.api.routes.chat import router as chat_router
+from src.api.routes.conversations import router as conversations_router
+from src.api.routes.clients import router as clients_router
 from src.config.logging import setup_logging, get_logger
 from src.config.settings import get_settings
 
@@ -80,10 +83,9 @@ def create_app() -> FastAPI:
     app.include_router(documents_router, prefix="/api/v1")   # /api/v1/documents/*
     app.include_router(search_router, prefix="/api/v1")      # /api/v1/search/*
     app.include_router(costs_router, prefix="/api/v1")       # /api/v1/costs/*
-
-    # Routers futuros (serão ativados nas próximas fases)
-    # app.include_router(chat_router, prefix="/api/v1")
-    # app.include_router(clients_router, prefix="/api/v1")
+    app.include_router(chat_router, prefix="/api/v1")        # /api/v1/chat/*
+    app.include_router(conversations_router, prefix="/api/v1")  # /api/v1/conversations/*
+    app.include_router(clients_router, prefix="/api/v1")         # /api/v1/clients/*
 
     return app
 

@@ -92,6 +92,7 @@ class RetrievalAgent(BaseAgent):
     system_prompt = RETRIEVAL_AGENT_SYSTEM_PROMPT
 
     # Configurações do LLM para este agente
+    use_mini_model = True  # Retrieval usa modelo rápido para decisões de busca
     temperature = 0.1  # Baixa temperatura para respostas mais determinísticas
     max_tokens = 1500
 

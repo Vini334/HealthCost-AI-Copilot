@@ -43,6 +43,10 @@ from src.agents.base import BaseAgent, SimpleAgent
 
 # Agentes especializados
 from src.agents.retrieval_agent import RetrievalAgent, create_retrieval_agent
+from src.agents.contract_analyst_agent import ContractAnalystAgent, create_contract_analyst_agent
+from src.agents.cost_insights_agent import CostInsightsAgent, create_cost_insights_agent
+from src.agents.negotiation_advisor_agent import NegotiationAdvisorAgent, create_negotiation_advisor_agent
+from src.agents.orchestrator_agent import OrchestratorAgent, create_orchestrator_agent
 
 # Sistema de ferramentas
 from src.agents.tools import (
@@ -60,6 +64,26 @@ from src.agents.search_tools import (
     KeywordSearchTool,
     SimilarChunksTool,
     register_search_tools,
+)
+
+# Ferramentas de análise de custos
+from src.agents.cost_tools import (
+    CostSummaryTool,
+    CostByCategoryTool,
+    CostByPeriodTool,
+    TopProceduresTool,
+    TopProvidersTool,
+    ComparePeriodsTool,
+    register_cost_tools,
+)
+
+# Ferramentas de análise de renegociação
+from src.agents.negotiation_tools import (
+    IdentifyRenegotiationOpportunitiesTool,
+    EstimateSavingsTool,
+    PrioritizeNegotiationPointsTool,
+    GenerateNegotiationReportTool,
+    register_negotiation_tools,
 )
 
 # Gerenciamento de contexto
@@ -98,6 +122,14 @@ __all__ = [
     # Agentes especializados
     "RetrievalAgent",
     "create_retrieval_agent",
+    "ContractAnalystAgent",
+    "create_contract_analyst_agent",
+    "CostInsightsAgent",
+    "create_cost_insights_agent",
+    "NegotiationAdvisorAgent",
+    "create_negotiation_advisor_agent",
+    "OrchestratorAgent",
+    "create_orchestrator_agent",
     # Ferramentas base
     "AgentTool",
     "FunctionTool",
@@ -110,6 +142,20 @@ __all__ = [
     "KeywordSearchTool",
     "SimilarChunksTool",
     "register_search_tools",
+    # Ferramentas de custos
+    "CostSummaryTool",
+    "CostByCategoryTool",
+    "CostByPeriodTool",
+    "TopProceduresTool",
+    "TopProvidersTool",
+    "ComparePeriodsTool",
+    "register_cost_tools",
+    # Ferramentas de negociação
+    "IdentifyRenegotiationOpportunitiesTool",
+    "EstimateSavingsTool",
+    "PrioritizeNegotiationPointsTool",
+    "GenerateNegotiationReportTool",
+    "register_negotiation_tools",
     # Contexto
     "ContextManager",
     "get_context_manager",

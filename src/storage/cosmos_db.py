@@ -200,8 +200,9 @@ class CosmosDBClient:
 
             if status == DocumentStatus.FAILED and error_message:
                 item["error_message"] = error_message
-
-            if status == DocumentStatus.INDEXED:
+            elif status == DocumentStatus.INDEXED:
+                # Limpa erro anterior quando processamento tem sucesso
+                item["error_message"] = None
                 item["processed_at"] = datetime.utcnow().isoformat()
 
             # replace_item substitui o documento inteiro
@@ -640,6 +641,584 @@ class CosmosDBClient:
         )
 
         return deleted_count
+
+    # ============================================================
+    # Operações de Conversas
+    # ============================================================
+
+    # Nome do container para conversas
+    CONVERSATIONS_CONTAINER = "conversations"
+
+    def _get_conversations_container(self):
+        """
+        Retorna referência ao container de conversas.
+
+        O container é criado automaticamente se não existir.
+        """
+        self._database.create_container_if_not_exists(
+            id=self.CONVERSATIONS_CONTAINER,
+            partition_key=PartitionKey(path="/client_id"),
+        )
+        return self._database.get_container_client(self.CONVERSATIONS_CONTAINER)
+
+    async def create_conversation(self, conversation) -> dict:
+        """
+        Cria uma nova conversa.
+
+        Args:
+            conversation: Objeto Conversation
+
+        Returns:
+            Conversa criada (dict)
+
+        Raises:
+            Exception: Se falhar ao criar
+        """
+        container = self._get_conversations_container()
+
+        # Converte o Pydantic model para dict
+        item = conversation.model_dump(mode="json")
+
+        # O campo 'id' é obrigatório no Cosmos DB
+        item["id"] = str(conversation.id)
+
+        logger.info(
+            "Criando conversa",
+            conversation_id=item["id"],
+            client_id=conversation.client_id,
+        )
+
+        result = container.create_item(body=item)
+
+        logger.info(
+            "Conversa criada com sucesso",
+            conversation_id=result["id"],
+        )
+
+        return result
+
+    async def get_conversation(
+        self,
+        conversation_id: Union[str, UUID],
+        client_id: str,
+    ):
+        """
+        Busca uma conversa por ID.
+
+        Args:
+            conversation_id: ID da conversa
+            client_id: ID do cliente (partition key)
+
+        Returns:
+            Conversation se encontrado, None caso contrário
+        """
+        # Import local para evitar circular import
+        from src.models.conversations import Conversation
+
+        container = self._get_conversations_container()
+        conv_id = str(conversation_id)
+
+        try:
+            item = container.read_item(
+                item=conv_id,
+                partition_key=client_id,
+            )
+
+            logger.debug("Conversa encontrada", conversation_id=conv_id)
+            return Conversation(**item)
+
+        except CosmosResourceNotFoundError:
+            logger.debug("Conversa não encontrada", conversation_id=conv_id)
+            return None
+
+    async def update_conversation(self, conversation) -> dict:
+        """
+        Atualiza uma conversa existente.
+
+        Args:
+            conversation: Objeto Conversation atualizado
+
+        Returns:
+            Conversa atualizada (dict)
+
+        Raises:
+            CosmosResourceNotFoundError: Se a conversa não existir
+        """
+        container = self._get_conversations_container()
+
+        # Converte o Pydantic model para dict
+        item = conversation.model_dump(mode="json")
+        item["id"] = str(conversation.id)
+
+        logger.debug(
+            "Atualizando conversa",
+            conversation_id=item["id"],
+            message_count=conversation.message_count,
+        )
+
+        result = container.replace_item(
+            item=item["id"],
+            body=item,
+        )
+
+        logger.info(
+            "Conversa atualizada",
+            conversation_id=result["id"],
+        )
+
+        return result
+
+    async def list_conversations_by_client(
+        self,
+        client_id: str,
+        contract_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list, int]:
+        """
+        Lista conversas de um cliente.
+
+        Args:
+            client_id: ID do cliente
+            contract_id: Filtrar por contrato (opcional)
+            status: Filtrar por status (opcional)
+            limit: Máximo de resultados
+            offset: Pular primeiros N resultados
+
+        Returns:
+            Tuple de (lista de conversas, total)
+        """
+        # Import local para evitar circular import
+        from src.models.conversations import Conversation
+
+        container = self._get_conversations_container()
+
+        # Query para contagem total
+        count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.client_id = @client_id"
+        count_params = [{"name": "@client_id", "value": client_id}]
+
+        # Query principal
+        query = """
+            SELECT * FROM c
+            WHERE c.client_id = @client_id
+        """
+        parameters = [{"name": "@client_id", "value": client_id}]
+
+        if contract_id:
+            query += " AND c.contract_id = @contract_id"
+            parameters.append({"name": "@contract_id", "value": contract_id})
+            count_query += " AND c.contract_id = @contract_id"
+            count_params.append({"name": "@contract_id", "value": contract_id})
+
+        if status:
+            query += " AND c.status = @status"
+            parameters.append({"name": "@status", "value": status})
+            count_query += " AND c.status = @status"
+            count_params.append({"name": "@status", "value": status})
+
+        query += " ORDER BY c.updated_at DESC"
+        query += f" OFFSET {offset} LIMIT {limit}"
+
+        logger.debug(
+            "Query de conversas",
+            query=query,
+            parameters=parameters,
+        )
+
+        # Executa contagem
+        count_result = list(container.query_items(
+            query=count_query,
+            parameters=count_params,
+            partition_key=client_id,
+        ))
+        total = count_result[0] if count_result else 0
+
+        # Executa query principal
+        items = container.query_items(
+            query=query,
+            parameters=parameters,
+            partition_key=client_id,
+        )
+
+        conversations = [Conversation(**item) for item in items]
+
+        logger.info(
+            "Conversas listadas",
+            client_id=client_id,
+            count=len(conversations),
+            total=total,
+        )
+
+        return conversations, total
+
+    async def delete_conversation(
+        self,
+        conversation_id: Union[str, UUID],
+        client_id: str,
+    ) -> bool:
+        """
+        Remove uma conversa.
+
+        Args:
+            conversation_id: ID da conversa
+            client_id: ID do cliente
+
+        Returns:
+            True se removida, False se não existia
+        """
+        container = self._get_conversations_container()
+        conv_id = str(conversation_id)
+
+        try:
+            container.delete_item(item=conv_id, partition_key=client_id)
+            logger.info("Conversa removida", conversation_id=conv_id)
+            return True
+        except CosmosResourceNotFoundError:
+            logger.warning(
+                "Conversa não encontrada para remoção",
+                conversation_id=conv_id,
+            )
+            return False
+
+    async def add_message_to_conversation(
+        self,
+        conversation_id: Union[str, UUID],
+        client_id: str,
+        message,
+    ):
+        """
+        Adiciona uma mensagem a uma conversa existente.
+
+        Args:
+            conversation_id: ID da conversa
+            client_id: ID do cliente
+            message: ConversationMessage a adicionar
+
+        Returns:
+            Conversa atualizada ou None se não encontrada
+        """
+        # Busca a conversa
+        conversation = await self.get_conversation(conversation_id, client_id)
+        if not conversation:
+            return None
+
+        # Adiciona a mensagem
+        conversation.messages.append(message)
+        conversation.message_count += 1
+        conversation.last_message_at = message.created_at
+
+        if message.tokens_used:
+            conversation.total_tokens_used += message.tokens_used
+
+        # Atualiza updated_at
+        from datetime import datetime
+        conversation.updated_at = datetime.utcnow()
+
+        # Salva
+        await self.update_conversation(conversation)
+
+        return conversation
+
+    # ============================================================
+    # Operações de Clientes
+    # ============================================================
+
+    # Nome do container para clientes
+    CLIENTS_CONTAINER = "clients"
+
+    def _get_clients_container(self):
+        """
+        Retorna referência ao container de clientes.
+
+        O container é criado automaticamente se não existir.
+        Partition key é o próprio id do cliente (auto-particionamento).
+        """
+        self._database.create_container_if_not_exists(
+            id=self.CLIENTS_CONTAINER,
+            partition_key=PartitionKey(path="/id"),
+        )
+        return self._database.get_container_client(self.CLIENTS_CONTAINER)
+
+    async def create_client(self, client) -> dict:
+        """
+        Cria um novo cliente.
+
+        Args:
+            client: Objeto Client
+
+        Returns:
+            Cliente criado (dict)
+
+        Raises:
+            Exception: Se falhar ao criar
+        """
+        container = self._get_clients_container()
+
+        # Converte o Pydantic model para dict
+        item = client.model_dump(mode="json")
+
+        # O campo 'id' é obrigatório no Cosmos DB
+        item["id"] = str(client.id)
+
+        logger.info(
+            "Criando cliente",
+            client_id=item["id"],
+            client_name=client.name,
+        )
+
+        result = container.create_item(body=item)
+
+        logger.info(
+            "Cliente criado com sucesso",
+            client_id=result["id"],
+        )
+
+        return result
+
+    async def get_client(self, client_id: Union[str, UUID]):
+        """
+        Busca um cliente por ID.
+
+        Args:
+            client_id: ID do cliente
+
+        Returns:
+            Client se encontrado, None caso contrário
+        """
+        # Import local para evitar circular import
+        from src.models.clients import Client
+
+        container = self._get_clients_container()
+        c_id = str(client_id)
+
+        try:
+            # Para clientes, o id é também a partition key
+            item = container.read_item(
+                item=c_id,
+                partition_key=c_id,
+            )
+
+            logger.debug("Cliente encontrado", client_id=c_id)
+            return Client(**item)
+
+        except CosmosResourceNotFoundError:
+            logger.debug("Cliente não encontrado", client_id=c_id)
+            return None
+
+    async def update_client(self, client) -> dict:
+        """
+        Atualiza um cliente existente.
+
+        Args:
+            client: Objeto Client atualizado
+
+        Returns:
+            Cliente atualizado (dict)
+
+        Raises:
+            CosmosResourceNotFoundError: Se o cliente não existir
+        """
+        container = self._get_clients_container()
+
+        # Converte o Pydantic model para dict
+        item = client.model_dump(mode="json")
+        item["id"] = str(client.id)
+
+        # Atualiza updated_at
+        item["updated_at"] = datetime.utcnow().isoformat()
+
+        logger.debug(
+            "Atualizando cliente",
+            client_id=item["id"],
+            client_name=client.name,
+        )
+
+        result = container.replace_item(
+            item=item["id"],
+            body=item,
+        )
+
+        logger.info(
+            "Cliente atualizado",
+            client_id=result["id"],
+        )
+
+        return result
+
+    async def list_clients(
+        self,
+        status: Optional[str] = None,
+        search: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list, int]:
+        """
+        Lista clientes com filtros e paginação.
+
+        Args:
+            status: Filtrar por status (active, inactive, suspended)
+            search: Busca por nome ou documento
+            limit: Máximo de resultados
+            offset: Pular primeiros N resultados
+
+        Returns:
+            Tuple de (lista de clientes, total)
+        """
+        # Import local para evitar circular import
+        from src.models.clients import Client
+
+        container = self._get_clients_container()
+
+        # Query base
+        query = "SELECT * FROM c WHERE 1=1"
+        parameters = []
+
+        # Filtro por status
+        if status:
+            query += " AND c.status = @status"
+            parameters.append({"name": "@status", "value": status})
+
+        # Busca por nome ou documento
+        if search:
+            query += " AND (CONTAINS(LOWER(c.name), @search) OR CONTAINS(c.document, @search))"
+            parameters.append({"name": "@search", "value": search.lower()})
+
+        # Query de contagem
+        count_query = query.replace("SELECT *", "SELECT VALUE COUNT(1)")
+
+        # Ordenação e paginação
+        query += " ORDER BY c.created_at DESC"
+        query += f" OFFSET {offset} LIMIT {limit}"
+
+        logger.debug(
+            "Query de clientes",
+            query=query,
+            parameters=parameters,
+        )
+
+        # Executa contagem (cross-partition para clientes)
+        count_result = list(container.query_items(
+            query=count_query,
+            parameters=parameters,
+            enable_cross_partition_query=True,
+        ))
+        total = count_result[0] if count_result else 0
+
+        # Executa query principal
+        items = container.query_items(
+            query=query,
+            parameters=parameters,
+            enable_cross_partition_query=True,
+        )
+
+        clients = [Client(**item) for item in items]
+
+        logger.info(
+            "Clientes listados",
+            count=len(clients),
+            total=total,
+        )
+
+        return clients, total
+
+    async def delete_client(self, client_id: Union[str, UUID]) -> bool:
+        """
+        Remove um cliente.
+
+        Args:
+            client_id: ID do cliente
+
+        Returns:
+            True se removido, False se não existia
+
+        Nota: Esta operação não remove documentos e conversas associadas.
+              Para remoção completa, use ClientService.delete_client_with_data()
+        """
+        container = self._get_clients_container()
+        c_id = str(client_id)
+
+        try:
+            # Para clientes, o id é também a partition key
+            container.delete_item(item=c_id, partition_key=c_id)
+            logger.info("Cliente removido", client_id=c_id)
+            return True
+        except CosmosResourceNotFoundError:
+            logger.warning(
+                "Cliente não encontrado para remoção",
+                client_id=c_id,
+            )
+            return False
+
+    async def get_client_stats(self, client_id: str) -> dict:
+        """
+        Retorna estatísticas de um cliente.
+
+        Args:
+            client_id: ID do cliente
+
+        Returns:
+            Dict com contagens de documentos, conversas, custos
+        """
+        stats = {
+            "contract_count": 0,
+            "cost_file_count": 0,
+            "document_count": 0,
+            "conversation_count": 0,
+            "documents_by_status": {},
+        }
+
+        # Conta documentos por tipo e status
+        docs_container = self._get_documents_container()
+        doc_query = """
+            SELECT c.document_type, c.status, COUNT(1) as count
+            FROM c
+            WHERE c.client_id = @client_id
+            GROUP BY c.document_type, c.status
+        """
+        doc_params = [{"name": "@client_id", "value": client_id}]
+
+        doc_items = docs_container.query_items(
+            query=doc_query,
+            parameters=doc_params,
+            partition_key=client_id,
+        )
+
+        for item in doc_items:
+            doc_type = item.get("document_type", "unknown")
+            doc_status = item.get("status", "unknown")
+            count = item.get("count", 0)
+
+            stats["document_count"] += count
+
+            if doc_type == "contract":
+                stats["contract_count"] += count
+            elif doc_type == "cost_data":
+                stats["cost_file_count"] += count
+
+            if doc_status not in stats["documents_by_status"]:
+                stats["documents_by_status"][doc_status] = 0
+            stats["documents_by_status"][doc_status] += count
+
+        # Conta conversas
+        conv_container = self._get_conversations_container()
+        conv_query = "SELECT VALUE COUNT(1) FROM c WHERE c.client_id = @client_id"
+        conv_params = [{"name": "@client_id", "value": client_id}]
+
+        conv_result = list(conv_container.query_items(
+            query=conv_query,
+            parameters=conv_params,
+            partition_key=client_id,
+        ))
+        stats["conversation_count"] = conv_result[0] if conv_result else 0
+
+        logger.debug(
+            "Estatísticas do cliente",
+            client_id=client_id,
+            stats=stats,
+        )
+
+        return stats
 
 
 # Singleton

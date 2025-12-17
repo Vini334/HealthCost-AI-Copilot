@@ -20,7 +20,10 @@ class AzureOpenAISettings(BaseSettings):
     api_key: str = Field(..., description="API Key do Azure OpenAI")
     api_version: str = Field(default="2024-02-01", description="Versão da API")
     deployment_name: str = Field(
-        default="gpt-4o", description="Nome do deployment do modelo"
+        default="gpt-4o", description="Nome do deployment do modelo principal (análises complexas)"
+    )
+    deployment_name_mini: str = Field(
+        default="o4-mini", description="Nome do deployment do modelo rápido (tarefas simples)"
     )
     embedding_deployment: str = Field(
         default="text-embedding-3-small", description="Nome do deployment de embeddings"

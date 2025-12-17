@@ -1,0 +1,21 @@
+data_atendimento,beneficiario,cpf,tipo_atendimento,procedimento,codigo_tuss,prestador,valor_cobrado,valor_pago,coparticipacao,status
+2024-01-15,Maria Silva Santos,123.456.789-00,Consulta,Consulta médica em consultório,10101012,Clínica São Lucas,250.00,200.00,50.00,pago
+2024-01-18,João Pedro Oliveira,234.567.890-11,Exame,Hemograma completo,40304361,Lab Diagnóstico,85.00,85.00,0.00,pago
+2024-01-20,Maria Silva Santos,123.456.789-00,Exame,Glicemia de jejum,40301630,Lab Diagnóstico,35.00,35.00,0.00,pago
+2024-01-22,Ana Carolina Souza,345.678.901-22,Consulta,Consulta médica em consultório,10101012,Hospital Central,280.00,200.00,80.00,pago
+2024-02-01,João Pedro Oliveira,234.567.890-11,Internação,Diária de internação clínica,30101581,Hospital Central,1500.00,1500.00,0.00,pago
+2024-02-02,João Pedro Oliveira,234.567.890-11,Internação,Diária de internação clínica,30101581,Hospital Central,1500.00,1500.00,0.00,pago
+2024-02-03,João Pedro Oliveira,234.567.890-11,Internação,Diária de internação clínica,30101581,Hospital Central,1500.00,1500.00,0.00,pago
+2024-02-05,Carlos Eduardo Lima,456.789.012-33,Consulta,Consulta médica em consultório,10101012,Clínica São Lucas,250.00,200.00,50.00,pago
+2024-02-10,Ana Carolina Souza,345.678.901-22,Exame,Ressonância magnética de coluna,41001079,Centro de Imagem,1200.00,960.00,240.00,pago
+2024-02-15,Maria Silva Santos,123.456.789-00,Procedimento,Fisioterapia - sessão,50000470,Fisio Vida,120.00,96.00,24.00,pago
+2024-02-16,Maria Silva Santos,123.456.789-00,Procedimento,Fisioterapia - sessão,50000470,Fisio Vida,120.00,96.00,24.00,pago
+2024-02-18,Maria Silva Santos,123.456.789-00,Procedimento,Fisioterapia - sessão,50000470,Fisio Vida,120.00,96.00,24.00,pago
+2024-02-20,Fernanda Costa Dias,567.890.123-44,Consulta,Consulta de pré-natal,10101039,Hospital Maternidade,180.00,180.00,0.00,pago
+2024-02-25,Carlos Eduardo Lima,456.789.012-33,Exame,Eletrocardiograma,40101010,Hospital Central,150.00,150.00,0.00,pago
+2024-03-01,Fernanda Costa Dias,567.890.123-44,Exame,Ultrassonografia obstétrica,40901114,Centro de Imagem,350.00,350.00,0.00,pago
+2024-03-05,João Pedro Oliveira,234.567.890-11,Consulta,Consulta de retorno,10101012,Hospital Central,180.00,144.00,36.00,pago
+2024-03-10,Ana Carolina Souza,345.678.901-22,Procedimento,Cirurgia artroscópica de joelho,30715016,Hospital Central,8500.00,8500.00,0.00,pago
+2024-03-12,Ana Carolina Souza,345.678.901-22,Internação,Diária de internação cirúrgica,30101603,Hospital Central,2200.00,2200.00,0.00,pago
+2024-03-15,Maria Silva Santos,123.456.789-00,Consulta,Consulta médica em consultório,10101012,Clínica São Lucas,250.00,200.00,50.00,pago
+2024-03-20,Carlos Eduardo Lima,456.789.012-33,Exame,Tomografia de tórax,41001010,Centro de Imagem,650.00,520.00,130.00,pago

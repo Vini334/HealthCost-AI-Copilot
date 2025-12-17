@@ -118,32 +118,32 @@ Este documento detalha as fases de desenvolvimento do HealthCost AI Copilot, com
 - [x] Retorna chunks relevantes com metadados
 
 #### 3.3 Contract Analyst Agent
-- [ ] Recebe chunks e pergunta
-- [ ] Interpreta cláusulas contratuais
-- [ ] Explica em linguagem de negócios
-- [ ] Cita seções e páginas
+- [x] Recebe chunks e pergunta
+- [x] Interpreta cláusulas contratuais
+- [x] Explica em linguagem de negócios
+- [x] Cita seções e páginas
 
 #### 3.4 Cost Insights Agent
-- [ ] Acessa dados de custos do cliente
-- [ ] Tools para análises:
-  - [ ] Agregação por categoria
-  - [ ] Evolução temporal
-  - [ ] Top procedimentos
-  - [ ] Comparação de períodos
-- [ ] Gera insights sobre tendências
+- [x] Acessa dados de custos do cliente
+- [x] Tools para análises:
+  - [x] Agregação por categoria
+  - [x] Evolução temporal
+  - [x] Top procedimentos
+  - [x] Comparação de períodos
+- [x] Gera insights sobre tendências
 
 #### 3.5 Negotiation Advisor Agent
-- [ ] Recebe contexto de contrato + custos
-- [ ] Identifica oportunidades de renegociação
-- [ ] Prioriza pontos por impacto
-- [ ] Estima economia potencial
+- [x] Recebe contexto de contrato + custos
+- [x] Identifica oportunidades de renegociação
+- [x] Prioriza pontos por impacto
+- [x] Estima economia potencial
 
 #### 3.6 Orchestrator Agent
-- [ ] Análise de intent da pergunta
-- [ ] Decisão de quais agentes acionar
-- [ ] Coordenação de execução (paralela/sequencial)
-- [ ] Consolidação de respostas
-- [ ] Geração de resposta final
+- [x] Análise de intent da pergunta
+- [x] Decisão de quais agentes acionar
+- [x] Coordenação de execução (paralela/sequencial)
+- [x] Consolidação de respostas
+- [x] Geração de resposta final
 
 ### Critérios de Conclusão
 - Pergunta sobre contrato aciona Retrieval + Contract Analyst
@@ -160,31 +160,31 @@ Este documento detalha as fases de desenvolvimento do HealthCost AI Copilot, com
 ### Entregas
 
 #### 4.1 Endpoint de Chat
-- [ ] POST `/api/v1/chat`
-- [ ] Request: message, client_id, contract_id, conversation_id (opcional)
-- [ ] Response: answer, sources, agent_trace (debug)
+- [x] POST `/api/v1/chat`
+- [x] Request: message, client_id, contract_id, conversation_id (opcional)
+- [x] Response: answer, sources, agent_trace (debug)
 
 #### 4.2 Gerenciamento de Conversas
-- [ ] Criar nova conversa
-- [ ] Continuar conversa existente
-- [ ] Listar conversas por cliente
-- [ ] Histórico de mensagens
+- [x] Criar nova conversa
+- [x] Continuar conversa existente
+- [x] Listar conversas por cliente
+- [x] Histórico de mensagens
 
 #### 4.3 Contexto de Conversa
-- [ ] Memória de curto prazo (últimas N mensagens)
-- [ ] Resumo de conversa longa
-- [ ] Referência a mensagens anteriores
+- [x] Memória de curto prazo (últimas N mensagens)
+- [x] Resumo de conversa longa
+- [x] Referência a mensagens anteriores
 
 #### 4.4 Formatação de Respostas
-- [ ] Markdown para formatação rica
-- [ ] Citações de fontes (página, seção)
-- [ ] Tabelas para dados numéricos
-- [ ] Destaque de recomendações
+- [x] Markdown para formatação rica
+- [x] Citações de fontes (página, seção)
+- [x] Tabelas para dados numéricos
+- [x] Destaque de recomendações
 
 #### 4.5 API de Clientes e Contratos
-- [ ] CRUD de clientes
-- [ ] Listagem de contratos por cliente
-- [ ] Status de processamento de documentos
+- [x] CRUD de clientes
+- [x] Listagem de contratos por cliente
+- [x] Status de processamento de documentos
 
 ### Critérios de Conclusão
 - Chat funciona end-to-end
@@ -282,8 +282,8 @@ Este documento detalha as fases de desenvolvimento do HealthCost AI Copilot, com
 |------|--------|--------|-----------|
 | Fase 1 - Setup | Concluída | 15/12/2025 | 15/12/2025 |
 | Fase 2 - Ingestão | Concluída | 16/12/2025 | 16/12/2025 |
-| Fase 3 - Agentes | Em andamento | 16/12/2025 | - |
-| Fase 4 - Interface | Não iniciada | - | - |
+| Fase 3 - Agentes | Concluída | 16/12/2025 | 16/12/2025 |
+| Fase 4 - Interface | Concluída | 16/12/2025 | 16/12/2025 |
 | Fase 5 - Deploy | Não iniciada | - | - |
 | Fase 6 - Evolução | Não iniciada | - | - |
 

@@ -72,6 +72,51 @@ from src.models.agents import (
     OrchestratorDecision,
 )
 
+from src.models.chat import (
+    # Modelos de request/response
+    ChatRequest,
+    ChatResponse,
+    ChatMessageHistory,
+    ChatError,
+    # Modelos auxiliares
+    SourceReference,
+    AgentTrace,
+    AgentTraceStep,
+)
+
+from src.models.conversations import (
+    # Enums
+    MessageRole,
+    ConversationStatus,
+    # Modelos principais
+    ConversationMessage,
+    Conversation,
+    # Modelos de API
+    ConversationSummary,
+    ConversationListResponse,
+    ConversationDetailResponse,
+    CreateConversationRequest,
+    UpdateConversationRequest,
+)
+
+from src.models.clients import (
+    # Enums
+    ClientStatus,
+    # Modelos principais
+    Client,
+    # Modelos de API
+    ClientSummary,
+    ClientListResponse,
+    ClientDetailResponse,
+    CreateClientRequest,
+    UpdateClientRequest,
+    ContractSummary,
+    ClientContractsResponse,
+    DocumentProcessingStatus,
+    ProcessingStatusResponse,
+    ClientStatsResponse,
+)
+
 __all__ = [
     # Documents
     "DocumentType",
@@ -117,4 +162,35 @@ __all__ = [
     "AgentExecutionStep",
     "AgentExecutionResult",
     "OrchestratorDecision",
+    # Chat
+    "ChatRequest",
+    "ChatResponse",
+    "ChatMessageHistory",
+    "ChatError",
+    "SourceReference",
+    "AgentTrace",
+    "AgentTraceStep",
+    # Conversations
+    "MessageRole",
+    "ConversationStatus",
+    "ConversationMessage",
+    "Conversation",
+    "ConversationSummary",
+    "ConversationListResponse",
+    "ConversationDetailResponse",
+    "CreateConversationRequest",
+    "UpdateConversationRequest",
+    # Clients
+    "ClientStatus",
+    "Client",
+    "ClientSummary",
+    "ClientListResponse",
+    "ClientDetailResponse",
+    "CreateClientRequest",
+    "UpdateClientRequest",
+    "ContractSummary",
+    "ClientContractsResponse",
+    "DocumentProcessingStatus",
+    "ProcessingStatusResponse",
+    "ClientStatsResponse",
 ]

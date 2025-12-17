@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 # Configurar variáveis de ambiente para testes ANTES de importar a app
 os.environ.setdefault("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com/")
 os.environ.setdefault("AZURE_OPENAI_API_KEY", "test-key")
+os.environ.setdefault("AZURE_OPENAI_DEPLOYMENT_NAME_MINI", "o4-mini")
 os.environ.setdefault("AZURE_SEARCH_ENDPOINT", "https://test.search.windows.net")
 os.environ.setdefault("AZURE_SEARCH_API_KEY", "test-key")
 os.environ.setdefault("AZURE_STORAGE_CONNECTION_STRING", "DefaultEndpointsProtocol=https;AccountName=test")
